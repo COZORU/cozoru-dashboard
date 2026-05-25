@@ -25,7 +25,11 @@ export type FullPLData = {
 }
 
 function fmtYen(v: number) {
-  return v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`
+  const abs = Math.abs(Math.round(v))
+  const sign = v < 0 ? '−' : ''
+  return abs >= 10000
+    ? `${sign}¥${Math.round(abs / 10000).toLocaleString()}万`
+    : `${sign}¥${abs.toLocaleString()}`
 }
 function fmtDia(v: number) {
   return v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()

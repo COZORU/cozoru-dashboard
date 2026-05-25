@@ -1,13 +1,13 @@
 import Sidebar from '@/components/Sidebar'
 import AnnualDashboardClient, { type FullPLData } from '@/components/AnnualDashboardClient'
 
-export const revalidate = 300
+export const revalidate = 0
 
 async function getData(): Promise<FullPLData | null> {
   const url = process.env.GAS_API_URL
   if (!url || url.includes('placeholder')) return null
   try {
-    const res = await fetch(`${url}?action=fullpl`, { next: { revalidate: 300 } })
+    const res = await fetch(`${url}?action=fullpl`, { cache: 'no-store' })
     const json = await res.json()
     return json.status === 'ok' ? json.data.fullpl : null
   } catch { return null }

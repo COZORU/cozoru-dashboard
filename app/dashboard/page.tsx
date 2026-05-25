@@ -1,13 +1,13 @@
 import Sidebar from '@/components/Sidebar'
 import FinanceDashboardClient, { type SummaryData } from '@/components/FinanceDashboardClient'
 
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 async function getData(): Promise<SummaryData | null> {
   const url = process.env.GAS_API_URL
   if (!url || url.includes('placeholder')) return null
   try {
-    const res = await fetch(`${url}?action=summary`, { next: { revalidate: 300 } })
+    const res = await fetch(`${url}?action=summary`, { cache: 'no-store' })
     const json = await res.json()
     return json.status === 'ok' ? json.data.summary : null
   } catch { return null }

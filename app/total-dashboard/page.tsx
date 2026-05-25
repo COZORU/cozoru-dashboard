@@ -1,7 +1,7 @@
 import Sidebar from '@/components/Sidebar'
 import AnnualDashboardClient, { type FullPLData } from '@/components/AnnualDashboardClient'
 
-export const revalidate = 0
+export const dynamic = 'force-dynamic'
 
 async function getData(): Promise<FullPLData | null> {
   const url = process.env.GAS_API_URL

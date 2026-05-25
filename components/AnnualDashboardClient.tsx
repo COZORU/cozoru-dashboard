@@ -245,7 +245,7 @@ export default function AnnualDashboardClient({ data }: { data: FullPLData }) {
             <div key={key} className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">{label}</div>
               <div className={`text-lg font-bold inline-block px-2 py-0.5 rounded ${color}`}>
-                {(cur as Record<string, number>)[key] ?? '—'} 人
+                {(cur as unknown as Record<string, number>)[key] ?? '—'} 人
               </div>
             </div>
           ))}

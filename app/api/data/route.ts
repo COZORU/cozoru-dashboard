@@ -9,9 +9,14 @@ export async function GET(req: Request) {
   const month  = searchParams.get('month') || ''
 
   const url = `${gasUrl}?action=${action}&month=${month}`
-  const res = await fetch(url, { cache: 'no-store' })
+  const res = await fetch(url, { next: { revalidate: 300 } }) // 5分キャッシュ
   const json = await res.json()
-  return NextResponse.json(json)
+
+  return NextResponse.json(json, {
+    headers: {
+      'Cache-Control': 's-maxage=300, stale-while-revalidate=60',
+    },
+  })
 }
 
 export async function POST(req: Request) {

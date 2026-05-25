@@ -1,5 +1,6 @@
 import KPICard from '@/components/KPICard'
 import RevenueChart from '@/components/RevenueChart'
+import TrendForecastChart from '@/components/TrendForecastChart'
 import Sidebar from '@/components/Sidebar'
 
 async function getData() {
@@ -28,15 +29,26 @@ type SectionSnap = {
 
 const OFFICES = ['全社合計', 'cozoru:全社', 'ライブナウV', 'Tolance:全社']
 
-type ForecastItem = { month: string; revTaxIn: number; dia: number }
+type TrendItem    = { month: string; revTaxIn: number; dia: number; active: number; debut: number }
+type DiaFcItem    = { month: string; dia: number }
 
 export default async function DashboardPage() {
   const d = await getData()
   const cur = (d?.current || {}) as SectionSnap
-  const trend = d?.trend || []
+  const trend: TrendItem[]  = d?.trend       || []
+  const diaFc: DiaFcItem[]  = d?.diaForecast || []
   const off: Record<string, SectionSnap> = d?.officeSummary || {}
-  const forecast: ForecastItem[] = d?.forecast || []
   const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
+
+  // ダイヤ chart: actual from trend + forecast from diaForecast
+  const diaActual   = trend.map(t => ({ month: t.month, value: t.dia }))
+  const diaForecast = diaFc.map(f => ({ month: f.month, value: f.dia }))
+
+  // アクティブ数 chart: actual only
+  const activeActual = trend.map(t => ({ month: t.month, value: t.active }))
+
+  // デビュー数 chart: actual only
+  const debutActual  = trend.map(t => ({ month: t.month, value: t.debut }))
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -171,40 +183,52 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* 今後3ヶ月予測 */}
-        {forecast.length > 0 && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm mb-6 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm font-bold text-blue-800">今後3ヶ月 売上予測（全社・税込）</span>
-              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">DB_サマリ計算値</span>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {forecast.map((fc, i) => {
-                const label = `+${i + 1}M`
-                const growth = cur.revTaxIn > 0
-                  ? Math.round((fc.revTaxIn - cur.revTaxIn) / cur.revTaxIn * 100)
-                  : null
-                return (
-                  <div key={fc.month} className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-blue-600">{label} ({fc.month})</span>
-                      {growth !== null && (
-                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                          {growth >= 0 ? '+' : ''}{growth}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">{fmtYen(fc.revTaxIn)}</div>
-                    <div className="text-xs text-gray-400 mt-1">応援ダイヤ: {fmtDia(fc.dia)}</div>
-                  </div>
-                )
-              })}
+        {/* トレンド＆予測チャート */}
+        {trend.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-bold text-gray-700 mb-3">トレンド＆3ヶ月予測（スプシ連動）</h2>
+            <div className="grid grid-cols-1 gap-4">
+              {/* 売上実績チャート */}
+              <RevenueChart data={trend} />
+
+              {/* 応援ダイヤ 実績＋予測 */}
+              {diaActual.length > 0 && (
+                <TrendForecastChart
+                  title="応援ダイヤ（全社）"
+                  color="#43a047"
+                  actual={diaActual}
+                  forecast={diaForecast}
+                  fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
+                  height={220}
+                />
+              )}
+
+              {/* アクティブ数チャート */}
+              {activeActual.length > 0 && (
+                <TrendForecastChart
+                  title="アクティブライバー数（全社）"
+                  color="#0097a7"
+                  actual={activeActual}
+                  forecast={[]}
+                  fmt={v => `${v} 人`}
+                  height={180}
+                />
+              )}
+
+              {/* デビュー数チャート */}
+              {debutActual.length > 0 && (
+                <TrendForecastChart
+                  title="デビュー数（全社）"
+                  color="#7b1fa2"
+                  actual={debutActual}
+                  forecast={[]}
+                  fmt={v => `${v} 人`}
+                  height={180}
+                />
+              )}
             </div>
           </div>
         )}
-
-        {/* 売上トレンドチャート */}
-        {trend.length > 0 && <RevenueChart data={trend} />}
 
         {!d && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-800 text-sm">

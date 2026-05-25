@@ -1,8 +1,6 @@
-import dynamic from 'next/dynamic'
 import KPICard from '@/components/KPICard'
 import Sidebar from '@/components/Sidebar'
-
-const TrendForecastChart = dynamic(() => import('@/components/TrendForecastChart'), { ssr: false })
+import ChartSection from '@/components/ChartSection'
 
 async function getData() {
   const url = process.env.GAS_API_URL
@@ -186,51 +184,12 @@ export default async function DashboardPage() {
         {trend.length > 0 && (
           <div className="mb-6">
             <h2 className="text-sm font-bold text-gray-700 mb-3">トレンド＆3ヶ月予測（スプシ連動）</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {/* 売上（税込）実績＋予測 */}
-              <TrendForecastChart
-                title="売上（税込・全社）"
-                color="#1565c0"
-                actual={revActual}
-                forecast={revForecast}
-                fmt={v => v >= 1_000_000 ? `¥${(v/1_000_000).toFixed(1)}M` : `¥${v.toLocaleString()}`}
-                height={200}
-              />
-
-              {/* 応援ダイヤ 実績＋予測 */}
-              <TrendForecastChart
-                title="応援ダイヤ（全社）"
-                color="#43a047"
-                actual={diaActual}
-                forecast={diaForecast}
-                fmt={v => v >= 10000 ? `${(v/10000).toFixed(1)}万` : v.toLocaleString()}
-                height={200}
-              />
-
-              {/* アクティブ数 実績＋予測 */}
-              {actActual.length > 0 && (
-                <TrendForecastChart
-                  title="アクティブライバー数（全社）"
-                  color="#0097a7"
-                  actual={actActual}
-                  forecast={actForecast}
-                  fmt={v => `${v} 人`}
-                  height={200}
-                />
-              )}
-
-              {/* デビュー数 実績＋予測 */}
-              {debActual.length > 0 && (
-                <TrendForecastChart
-                  title="デビュー数（全社）"
-                  color="#7b1fa2"
-                  actual={debActual}
-                  forecast={debForecast}
-                  fmt={v => `${v} 人`}
-                  height={200}
-                />
-              )}
-            </div>
+            <ChartSection
+              revActual={revActual} revForecast={revForecast}
+              diaActual={diaActual} diaForecast={diaForecast}
+              actActual={actActual} actForecast={actForecast}
+              debActual={debActual} debForecast={debForecast}
+            />
           </div>
         )}
 

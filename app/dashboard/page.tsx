@@ -1,6 +1,8 @@
+import dynamic from 'next/dynamic'
 import KPICard from '@/components/KPICard'
-import TrendForecastChart from '@/components/TrendForecastChart'
 import Sidebar from '@/components/Sidebar'
+
+const TrendForecastChart = dynamic(() => import('@/components/TrendForecastChart'), { ssr: false })
 
 async function getData() {
   const url = process.env.GAS_API_URL

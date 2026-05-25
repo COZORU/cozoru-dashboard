@@ -25,8 +25,12 @@ export default async function TotalDashboardPage() {
           <p className="text-sm text-gray-400 mt-1">全社実績PL（PL(全社) ※最終調整）</p>
         </div>
 
-        {d ? (
+        {d && d.years && d.annual ? (
           <AnnualDashboardClient data={d} />
+        ) : d ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-blue-800 text-sm">
+            GAS の新バージョンをデプロイしてください。GAS エディタ → デプロイを管理 → 新バージョン。
+          </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-800 text-sm">
             GAS_API_URL が未設定です。GAS をデプロイ後に Vercel 環境変数を設定してください。

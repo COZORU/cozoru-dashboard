@@ -67,7 +67,7 @@ export default async function DashboardPage() {
           <KPICard title="応援ダイヤ" value={cur.dia ? `${fmtDia(cur.dia)} dia` : '—'} pct={d?.pctDia} color="#43a047" />
           <KPICard title="レベシェ" value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} color="#ef6c00" />
           <KPICard title="今月デビュー数" value={cur.debut !== undefined ? `${cur.debut} 人` : '—'} pct={d?.pctDebut} color="#7b1fa2" />
-          <KPICard title="C5達成数" value={cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'} color="#c62828" />
+          <KPICard title="C5達成数" value={cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'} color="#c62828" sub="翌月CSV取込後に確定" />
         </div>
 
         {/* CPN内訳 */}

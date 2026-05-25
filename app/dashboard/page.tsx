@@ -214,6 +214,61 @@ export default async function DashboardPage() {
           </div>
         )}
 
+        {/* 予測値の読み方 */}
+        <details className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 group">
+          <summary className="px-5 py-3.5 text-sm font-semibold text-gray-500 cursor-pointer flex items-center gap-2 select-none list-none hover:text-gray-700 transition-colors">
+            <span className="text-base">📖</span>
+            予測値の読み方
+            <span className="ml-auto text-gray-300 text-xs group-open:hidden">▼ 開く</span>
+            <span className="ml-auto text-gray-300 text-xs hidden group-open:inline">▲ 閉じる</span>
+          </summary>
+          <div className="px-5 pb-5 border-t border-gray-50">
+            <div className="grid grid-cols-3 gap-5 mt-4">
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-base">📈</span>
+                  <span className="text-xs font-bold text-gray-700">ダイヤ予測（+1M/+2M/+3M）</span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  毎月のダイヤの増え方・減り方のペースをそのまま未来に伸ばした数字です。
+                </p>
+                <div className="mt-2 bg-gray-50 rounded-lg p-2.5 text-xs text-gray-500 leading-relaxed">
+                  例）1月 100 → 2月 130 → 3月 160<br/>
+                  毎月+30のペース → 4月は <span className="font-bold text-gray-700">190 dia</span> と予測
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-base">📊</span>
+                  <span className="text-xs font-bold text-gray-700">売上予測（チャートの点線）</span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  ① 直近3か月の平均売上をベースにする<br/>
+                  ② 各事務所の成長判定（◎/○/✖）×ダイヤ量で補正する
+                </p>
+                <div className="mt-2 bg-gray-50 rounded-lg p-2.5 text-xs text-gray-500 leading-relaxed">
+                  ◎が多い月 → 予測が上ぶれ<br/>
+                  ✖が多い月 → 予測が下ぶれ<br/>
+                  <span className="text-gray-400">「平均 ＋ 成長の勢い」で算出</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-base">🎯</span>
+                  <span className="text-xs font-bold text-gray-700">予測精度（ライバー管理）</span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  「先月の予測」と「今月の実績」を比べた誤差率です。
+                </p>
+                <div className="mt-2 bg-gray-50 rounded-lg p-2.5 text-xs leading-relaxed space-y-1">
+                  <div><span className="font-bold text-emerald-600">+20%</span> <span className="text-gray-500">→ 予測より2割多く稼いだ</span></div>
+                  <div><span className="font-bold text-red-500">−15%</span> <span className="text-gray-500">→ 思ったより1.5割少なかった</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
         {!d && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-800 text-sm">
             GAS_API_URL が未設定です。GAS をデプロイ後に Vercel 環境変数を設定してください。

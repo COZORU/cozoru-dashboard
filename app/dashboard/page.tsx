@@ -13,7 +13,7 @@ async function getData() {
 }
 
 function fmtYen(v: number) {
-  return v >= 1_000_000 ? `¥${(v / 1_000_000).toFixed(2)}M` : `¥${v.toLocaleString()}`
+  return v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`
 }
 function fmtDia(v: number) {
   return v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()

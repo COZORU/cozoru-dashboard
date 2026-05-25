@@ -80,16 +80,16 @@ export default async function DashboardPage() {
         <SectionLabel>売上</SectionLabel>
         <div className="grid grid-cols-4 gap-4 mb-4">
           <KPICard title="売上（税込）"     value={cur.revTaxIn ? fmtYen(cur.revTaxIn) : '—'} pct={d?.pctRevenue} color="#1565c0" />
-          <KPICard title="売上（税抜）"     value={cur.revTaxEx ? fmtYen(cur.revTaxEx) : '—'} color="#1976d2" />
-          <KPICard title="投げ銭報酬（MF）" value={cur.mf ? fmtYen(cur.mf) : '—'} color="#0097a7" />
-          <KPICard title="CPN報酬合計"     value={cpnTotal ? fmtYen(cpnTotal) : '—'} color="#00695c" />
+          <KPICard title="売上（税抜）"     value={cur.revTaxEx ? fmtYen(cur.revTaxEx) : '—'} pct={d?.pctRevTaxEx} color="#1976d2" />
+          <KPICard title="投げ銭報酬（MF）" value={cur.mf ? fmtYen(cur.mf) : '—'} pct={d?.pctMf} color="#0097a7" />
+          <KPICard title="CPN報酬合計"     value={cpnTotal ? fmtYen(cpnTotal) : '—'} pct={d?.pctCpnTotal} color="#00695c" />
         </div>
 
         {/* ライバー KPI */}
         <SectionLabel>ライバー</SectionLabel>
         <div className="grid grid-cols-4 gap-4 mb-6">
           <KPICard title="応援ダイヤ"   value={cur.dia ? `${fmtDia(cur.dia)} dia` : '—'} pct={d?.pctDia} color="#43a047" />
-          <KPICard title="レベシェ"     value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} color="#ef6c00" />
+          <KPICard title="レベシェ"     value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} pct={d?.pctLeveshe} color="#ef6c00" />
           <KPICard title="今月デビュー数" value={cur.debut !== undefined ? `${cur.debut} 人` : '—'} pct={d?.pctDebut} color="#7b1fa2" />
           <KPICard title="C5達成数"     value={cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'} color="#c62828" sub="翌月CSV取込後に確定" />
         </div>

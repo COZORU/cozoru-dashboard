@@ -28,11 +28,14 @@ type SectionSnap = {
 
 const OFFICES = ['全社合計', 'cozoru:全社', 'ライブナウV', 'Tolance:全社']
 
+type ForecastItem = { month: string; revTaxIn: number; dia: number }
+
 export default async function DashboardPage() {
   const d = await getData()
   const cur = (d?.current || {}) as SectionSnap
   const trend = d?.trend || []
   const off: Record<string, SectionSnap> = d?.officeSummary || {}
+  const forecast: ForecastItem[] = d?.forecast || []
   const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
 
   return (
@@ -165,6 +168,38 @@ export default async function DashboardPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* 今後3ヶ月予測 */}
+        {forecast.length > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm mb-6 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm font-bold text-blue-800">今後3ヶ月 売上予測（全社・税込）</span>
+              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">DB_サマリ計算値</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {forecast.map((fc, i) => {
+                const label = `+${i + 1}M`
+                const growth = cur.revTaxIn > 0
+                  ? Math.round((fc.revTaxIn - cur.revTaxIn) / cur.revTaxIn * 100)
+                  : null
+                return (
+                  <div key={fc.month} className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-blue-600">{label} ({fc.month})</span>
+                      {growth !== null && (
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          {growth >= 0 ? '+' : ''}{growth}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xl font-bold text-gray-900">{fmtYen(fc.revTaxIn)}</div>
+                    <div className="text-xs text-gray-400 mt-1">応援ダイヤ: {fmtDia(fc.dia)}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

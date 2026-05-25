@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea
@@ -14,21 +15,20 @@ type Props = {
   forecast: ForecastItem[]
   fmt?: (v: number) => string
   height?: number
+  info?: ReactNode
 }
 
 const defaultFmt = (v: number) => v.toLocaleString()
 
 export default function TrendForecastChart({
-  title, color, actual, forecast, fmt = defaultFmt, height = 200
+  title, color, actual, forecast, fmt = defaultFmt, height = 200, info
 }: Props) {
-  // 実績と予測をマージ（最終実績月を接続点として両系列に持たせる）
   type Point = { month: string; act?: number; fc?: number }
   const map: Record<string, Point> = {}
 
   actual.forEach(p => {
     map[p.month] = { ...map[p.month], month: p.month, act: p.value }
   })
-  // 最終実績月を予測系列の起点にして線を繋ぐ
   const lastActual = actual.slice(-1)[0]
   if (lastActual) {
     map[lastActual.month] = { ...map[lastActual.month], fc: lastActual.value }
@@ -43,8 +43,18 @@ export default function TrendForecastChart({
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-      <div className="flex items-center gap-4 mb-3">
+      <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold text-gray-700">{title}</span>
+        {info && (
+          <div className="relative group">
+            <button className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 text-[9px] flex items-center justify-center flex-shrink-0 hover:border-blue-400 hover:text-blue-500 cursor-help">
+              ?
+            </button>
+            <div className="absolute z-20 top-5 left-0 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-xs text-gray-700 hidden group-hover:block">
+              {info}
+            </div>
+          </div>
+        )}
         {forecast.length > 0 && (
           <span className="flex items-center gap-3 text-xs text-gray-400 ml-auto">
             <span className="flex items-center gap-1">

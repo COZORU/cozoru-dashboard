@@ -225,6 +225,7 @@ export default function AnnualDashboardClient({ data }: { data: FullPLData }) {
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">応援ダイヤ</div>
             <div className="text-lg font-bold text-gray-900">{cur.dia ? `${fmtDia(cur.dia)}` : '—'}</div>
+            <div className="text-[10px] text-gray-400 mt-1">MF算出ベース（新規・移籍のみ）</div>
           </div>
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">年間デビュー</div>

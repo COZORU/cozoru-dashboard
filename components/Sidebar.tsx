@@ -1,13 +1,15 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, Star, Upload, LogOut } from 'lucide-react'
+import { BarChart2, LayoutDashboard, Users, Star, TrendingUp, Upload, LogOut } from 'lucide-react'
 
 const NAV = [
-  { href: '/dashboard', label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/livers',    label: 'ライバー管理',   icon: Users },
-  { href: '/debut',     label: 'デビュー管理',   icon: Star },
-  { href: '/upload',    label: 'CSVアップロード', icon: Upload },
+  { href: '/total-dashboard', label: '総ダッシュボード',  icon: BarChart2 },
+  { href: '/dashboard',       label: '０ 財務管理',       icon: LayoutDashboard },
+  { href: '/livers',          label: '１ ライバー管理',   icon: Users },
+  { href: '/debut',           label: '２ デビュー管理',   icon: Star },
+  { href: '/marketing',       label: '３ マーケ管理',     icon: TrendingUp },
+  { href: '/upload',          label: 'CSVアップロード',   icon: Upload },
 ]
 
 export default function Sidebar() {

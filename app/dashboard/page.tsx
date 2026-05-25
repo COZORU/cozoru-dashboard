@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       <main className="ml-56 flex-1 p-8">
         {/* ページヘッダー */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+          <h1 className="text-2xl font-bold text-gray-900">０ 財務管理</h1>
           <p className="text-sm text-gray-400 mt-1">最新月: {d?.latestMonth || '—'}</p>
         </div>
 

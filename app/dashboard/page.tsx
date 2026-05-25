@@ -1,5 +1,4 @@
 import KPICard from '@/components/KPICard'
-import RevenueChart from '@/components/RevenueChart'
 import TrendForecastChart from '@/components/TrendForecastChart'
 import Sidebar from '@/components/Sidebar'
 
@@ -29,26 +28,24 @@ type SectionSnap = {
 
 const OFFICES = ['全社合計', 'cozoru:全社', 'ライブナウV', 'Tolance:全社']
 
-type TrendItem    = { month: string; revTaxIn: number; dia: number; active: number; debut: number }
-type DiaFcItem    = { month: string; dia: number }
+type TrendItem = { month: string; revTaxIn: number; dia: number; active: number; debut: number }
 
 export default async function DashboardPage() {
   const d = await getData()
   const cur = (d?.current || {}) as SectionSnap
-  const trend: TrendItem[]  = d?.trend       || []
-  const diaFc: DiaFcItem[]  = d?.diaForecast || []
+  const trend: TrendItem[] = d?.trend || []
   const off: Record<string, SectionSnap> = d?.officeSummary || {}
   const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
 
-  // ダイヤ chart: actual from trend + forecast from diaForecast
+  // 各指標の actual（実績）と forecast（スプシ計算値）
+  const revActual   = trend.map(t => ({ month: t.month, value: t.revTaxIn }))
+  const revForecast = (d?.revForecast    || []).map((f: {month:string;revTaxIn:number}) => ({ month: f.month, value: f.revTaxIn }))
   const diaActual   = trend.map(t => ({ month: t.month, value: t.dia }))
-  const diaForecast = diaFc.map(f => ({ month: f.month, value: f.dia }))
-
-  // アクティブ数 chart: actual only
-  const activeActual = trend.map(t => ({ month: t.month, value: t.active }))
-
-  // デビュー数 chart: actual only
-  const debutActual  = trend.map(t => ({ month: t.month, value: t.debut }))
+  const diaForecast = (d?.diaForecast    || []).map((f: {month:string;dia:number})      => ({ month: f.month, value: f.dia }))
+  const actActual   = trend.map(t => ({ month: t.month, value: t.active }))
+  const actForecast = (d?.activeForecast || []).map((f: {month:string;active:number})   => ({ month: f.month, value: f.active }))
+  const debActual   = trend.map(t => ({ month: t.month, value: t.debut }))
+  const debForecast = (d?.debutForecast  || []).map((f: {month:string;debut:number})    => ({ month: f.month, value: f.debut }))
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -183,47 +180,52 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* トレンド＆予測チャート */}
+        {/* トレンド＆予測チャート（全4指標・スプシ連動） */}
         {trend.length > 0 && (
           <div className="mb-6">
             <h2 className="text-sm font-bold text-gray-700 mb-3">トレンド＆3ヶ月予測（スプシ連動）</h2>
-            <div className="grid grid-cols-1 gap-4">
-              {/* 売上実績チャート */}
-              <RevenueChart data={trend} />
+            <div className="grid grid-cols-2 gap-4">
+              {/* 売上（税込）実績＋予測 */}
+              <TrendForecastChart
+                title="売上（税込・全社）"
+                color="#1565c0"
+                actual={revActual}
+                forecast={revForecast}
+                fmt={v => v >= 1_000_000 ? `¥${(v/1_000_000).toFixed(1)}M` : `¥${v.toLocaleString()}`}
+                height={200}
+              />
 
               {/* 応援ダイヤ 実績＋予測 */}
-              {diaActual.length > 0 && (
-                <TrendForecastChart
-                  title="応援ダイヤ（全社）"
-                  color="#43a047"
-                  actual={diaActual}
-                  forecast={diaForecast}
-                  fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
-                  height={220}
-                />
-              )}
+              <TrendForecastChart
+                title="応援ダイヤ（全社）"
+                color="#43a047"
+                actual={diaActual}
+                forecast={diaForecast}
+                fmt={v => v >= 10000 ? `${(v/10000).toFixed(1)}万` : v.toLocaleString()}
+                height={200}
+              />
 
-              {/* アクティブ数チャート */}
-              {activeActual.length > 0 && (
+              {/* アクティブ数 実績＋予測 */}
+              {actActual.length > 0 && (
                 <TrendForecastChart
                   title="アクティブライバー数（全社）"
                   color="#0097a7"
-                  actual={activeActual}
-                  forecast={[]}
+                  actual={actActual}
+                  forecast={actForecast}
                   fmt={v => `${v} 人`}
-                  height={180}
+                  height={200}
                 />
               )}
 
-              {/* デビュー数チャート */}
-              {debutActual.length > 0 && (
+              {/* デビュー数 実績＋予測 */}
+              {debActual.length > 0 && (
                 <TrendForecastChart
                   title="デビュー数（全社）"
                   color="#7b1fa2"
-                  actual={debutActual}
-                  forecast={[]}
+                  actual={debActual}
+                  forecast={debForecast}
                   fmt={v => `${v} 人`}
-                  height={180}
+                  height={200}
                 />
               )}
             </div>

@@ -25,7 +25,7 @@ export default function ChartSection({
         color="#1565c0"
         actual={revActual}
         forecast={revForecast}
-        fmt={v => v >= 1_000_000 ? `¥${(v / 1_000_000).toFixed(1)}M` : `¥${v.toLocaleString()}`}
+        fmt={v => v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`}
         height={200}
       />
       <TrendForecastChart

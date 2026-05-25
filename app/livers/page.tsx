@@ -300,14 +300,15 @@ export default function LiversPage() {
         {/* 上位T1フォーカス */}
         {!loading && allLivers.length>0 && <TopT1Focus livers={allLivers} latestMonth={latestMonth}/>}
 
-        {/* 予測精度の補足 */}
-        <div className="flex items-center gap-2 text-xs text-gray-400 mb-2 px-1">
-          <span>💡</span>
-          <span>
-            <span className="font-semibold text-gray-500">予測精度</span>：先月の時点で「今月のダイヤはいくつになりそう？」と予測した値と、今月の実績の差です。
-            <span className="ml-2 text-emerald-600 font-semibold">+20%</span> なら予測より2割上振れ、
-            <span className="ml-1 text-red-500 font-semibold">−15%</span> なら予測より1.5割下振れ。
-          </span>
+        {/* 予測・予測精度の補足 */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm px-4 py-3 mb-3 text-xs text-gray-500 leading-relaxed">
+          <span className="font-semibold text-gray-700">予測値・予測精度について</span>
+          <span className="mx-2 text-gray-200">|</span>
+          <span className="font-semibold text-gray-600">+1M/+2M/+3M予測</span>：直近3か月のダイヤ増加率の平均をもとに算出。
+          <span className="mx-2 text-gray-200">|</span>
+          <span className="font-semibold text-gray-600">予測精度</span>：先月時点の+1M予測 vs 今月実績の差。
+          <span className="ml-1 text-emerald-600 font-semibold">+</span>なら上振れ、
+          <span className="text-red-500 font-semibold">−</span>なら下振れ。
         </div>
 
         {/* メインテーブル */}

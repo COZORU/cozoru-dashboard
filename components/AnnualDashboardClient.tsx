@@ -188,7 +188,7 @@ export default function AnnualDashboardClient({ data }: { data: FullPLData }) {
       {/* 経費内訳 */}
       <SectionLabel>経費内訳</SectionLabel>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-5 p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <div className="text-xs text-gray-500">総経費</div>
             <div className="text-2xl font-black text-gray-900">
@@ -205,20 +205,13 @@ export default function AnnualDashboardClient({ data }: { data: FullPLData }) {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-x-8">
-          <div>
+        {cur.expTotal > 0 && (
+          <div className="space-y-0">
             <ExpRow label="獲得コスト合計" value={cur.expKaito} />
             <ExpRow label="運用コスト合計" value={cur.expUnyo} />
-            <ExpRow label="マーケティング" value={cur.expMk} indent />
-            <ExpRow label="クリエイティブ" value={cur.expCreative} indent />
+            <ExpRow label="その他経費"     value={cur.expTotal - (cur.expKaito||0) - (cur.expUnyo||0)} />
           </div>
-          <div>
-            <ExpRow label="デザイン・広報" value={cur.expDesign} indent />
-            <ExpRow label="マネジメント"   value={cur.expMgmt} indent />
-            <ExpRow label="コーポレート"   value={cur.expCorp} indent />
-            <ExpRow label="その他経費"     value={cur.expOther} indent />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ライバー基盤 */}

@@ -38,7 +38,7 @@ export default function LoginPage() {
             placeholder="パスワード"
             value={pw}
             onChange={e => setPw(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
+            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
             required
           />
           {err && <p className="text-red-500 text-xs">{err}</p>}

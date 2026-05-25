@@ -43,9 +43,9 @@ export default function UploadPage() {
               <select
                 value={office}
                 onChange={e => setOffice(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
               >
-                {OFFICES.map(o => <option key={o}>{o}</option>)}
+                {OFFICES.map(o => <option key={o} className="text-gray-900">{o}</option>)}
               </select>
             </div>
             <div>
@@ -54,7 +54,7 @@ export default function UploadPage() {
                 type="month"
                 value={month}
                 onChange={e => setMonth(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1565c0]"
                 required
               />
             </div>

@@ -481,16 +481,27 @@ export default function DebutPage() {
         <div className="space-y-8">
 
           {/* ① グラフセクション（最上部） */}
-          {chartData && (
-            <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+          <div>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+            {chartData ? (
               <ChartSection
                 debActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.debut }))}
                 debForecast={(chartData.debutForecast || []).map(f => ({ month: f.month, value: f.debut }))}
                 c5Actual={(chartData.trend || []).map(t => ({ month: t.month, value: t.c5Count ?? 0 }))}
               />
-            </div>
-          )}
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {[1,2].map(i => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[240px] flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-gray-300 text-xs">
+                      <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                      グラフ読み込み中…
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* ② 以下はAPIデータが必要 */}
           {loading ? (

@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Sidebar from '@/components/Sidebar'
 import ChartSection from '@/components/ChartSection'
-import { type SummaryData } from '@/components/FinanceDashboardClient'
+import { type SummaryData, LiverSection } from '@/components/FinanceDashboardClient'
 
 // ─── Types ───────────────────────────────────────────────────
 type Liver = {
@@ -312,14 +312,42 @@ export default function LiversPage() {
         </div>
 
         {/* グラフセクション */}
-        {chartData && (
-          <div className="mb-8">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+        <div className="mb-8">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+          {chartData ? (
             <ChartSection
               diaActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.dia }))}
               diaForecast={(chartData.diaForecast || []).map(f => ({ month: f.month, value: f.dia }))}
               actActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.active }))}
               actForecast={(chartData.activeForecast || []).map(f => ({ month: f.month, value: f.active }))}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {[1,2].map(i => (
+                <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[240px] flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-gray-300 text-xs">
+                    <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                    グラフ読み込み中…
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ライバー基盤セクション（旧財務管理から移動） */}
+        {chartData && (
+          <div className="mb-8">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">ライバー基盤</p>
+            <LiverSection
+              cur={chartData.current}
+              off={chartData.officeSummary}
+              allOffices={Object.keys(chartData.officeSummary || {})}
+              pctDia={chartData.pctDia}
+              pctLeveshe={chartData.pctLeveshe}
+              pctDebut={chartData.pctDebut}
+              isGlobal={true}
+              isLatestMonth={true}
             />
           </div>
         )}

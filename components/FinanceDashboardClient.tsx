@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import ChartSection from './ChartSection'
 
-type SectionSnap = {
+export type SectionSnap = {
   revTaxIn: number; revTaxEx: number; dia: number; mf: number
   cpnC5: number; cpnB2: number; cpnA: number; cpnS: number; cpnOther: number
   leveshe: number; registered: number; active: number
@@ -446,7 +446,7 @@ function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth, overrideRe
 }
 
 // ─── ライバー 階層展開コンポーネント ────────────────────────────────
-function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGlobal, isLatestMonth }: {
+export function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGlobal, isLatestMonth }: {
   cur: SectionSnap
   off: Record<string, SectionSnap>
   allOffices: string[]
@@ -804,18 +804,6 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         isLatestMonth={isLatestMonth}
       />
 
-      {/* ライバー */}
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-6">ライバー</p>
-      <LiverSection
-        cur={cur}
-        off={off}
-        allOffices={allOffices}
-        pctDia={isGlobal ? displayPctDia : null}
-        pctLeveshe={isGlobal ? (isLatestMonth ? data.pctLeveshe : null) : null}
-        pctDebut={isGlobal ? displayPctDebut : null}
-        isGlobal={isGlobal}
-        isLatestMonth={isLatestMonth}
-      />
     </>
   )
 }

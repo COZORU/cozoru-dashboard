@@ -16,19 +16,24 @@ type MonthSnap = {
   _filledFields?: string[]
 }
 
-type GrowthOffice = { office: string; months: { month: string; judge: string; isActual: boolean }[] }
+type GrowthMonth = {
+  month: string; judge: string; isActual: boolean
+  dia?: number; singleThreshold?: number; req3m?: number; minDia?: number
+}
+type GrowthOffice = { office: string; months: GrowthMonth[] }
 
 // 列幅定義（CSS Grid で全セクション統一）
 const LABEL_COL = '200px'
 
-function fmtYen(v: number): string {
-  if (!v && v !== 0) return '—'
-  if (v === 0) return '—'
+function fmtYen(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '—'
+  if (v === 0) return '¥0'
   const sign = v < 0 ? '-' : ''
   return `${sign}¥${Math.round(Math.abs(v) / 10000).toLocaleString()}万`
 }
-function fmtDia(v: number): string {
-  if (!v) return '—'
+function fmtDia(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '—'
+  if (v === 0) return '0'
   return v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()
 }
 
@@ -80,6 +85,16 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   const [data, setData] = useState<MonthSnap[] | null>(null)
   const [growthBonus, setGrowthBonus] = useState<GrowthOffice[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [expandedOffices, setExpandedOffices] = useState<Record<string, boolean>>({})
+
+  function toggleOffice(office: string) {
+    setExpandedOffices(prev => ({ ...prev, [office]: !prev[office] }))
+  }
+
+  function fmtDiaLocal(v: number) {
+    if (!v) return '—'
+    return v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()
+  }
 
   useEffect(() => {
     Promise.all([
@@ -160,12 +175,15 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
     .map(o => o.office)
     .sort((a, b) => a.includes('cozoru') ? -1 : b.includes('cozoru') ? 1 : 0)
 
-  // データ準備
-  const actual   = displayMonths.filter(m => m.isActual).map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
-  const planPts  = displayMonths.map(m => ({ month: m.month, value: m.planRevTaxEx || 0 }))
-  const forecastPts = displayMonths
-    .filter(m => !m.isActual)
-    .map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
+  // データ準備 - 売上
+  const revActualPts   = displayMonths.filter(m => m.isActual).map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
+  const revPlanPts     = displayMonths.map(m => ({ month: m.month, value: m.planRevTaxEx || 0 }))
+  const revForecastPts = displayMonths.filter(m => !m.isActual).map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
+
+  // データ準備 - 経費（PL に全月入力済み。実績月=実績、予測月=計画/予測）
+  const expActualPts   = displayMonths.filter(m => m.isActual).map(m => ({ month: m.month, value: m.expTotal || 0 }))
+  const expPlanPts     = displayMonths.map(m => ({ month: m.month, value: m.expTotal || 0 }))
+  const expForecastPts = displayMonths.filter(m => !m.isActual).map(m => ({ month: m.month, value: m.expTotal || 0 }))
 
   // 各セルの背景・テキスト色決定
   const monthBg = (m: MonthSnap) => m.isActual ? 'bg-white' : 'bg-gray-50/60'
@@ -173,8 +191,8 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
 
   type RowDef = {
     label: string
-    accessor: (m: MonthSnap) => number
-    format: (v: number) => string
+    accessor: (m: MonthSnap) => number | undefined | null
+    format: (v: number | null | undefined) => string
     indent?: boolean
     section?: string
     showDiff?: boolean
@@ -197,9 +215,9 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
     {                          label: '経費合計',       accessor: m => m.expTotal,    format: fmtYen, info: 'PL(全社) 138行目（全月入力済み）' },
     { section: '事業利益',     label: '事業利益', accessor: m => m.profit, format: fmtYen, info: 'PL(全社) 270行目／売上補完時は (補完売上 − 経費合計) で再計算', filledKey: 'profit' },
 
-    { section: 'キャッシュ',   label: '現金増減額（営業CF）', accessor: m => m.cfOps    ?? 0, format: fmtYen, info: 'PL(全社) 339行目（営業活動によるキャッシュフロー）' },
-    {                          label: '想定の預金残高',       accessor: m => m.bankEst  ?? 0, format: fmtYen, info: 'PL(全社) 340行目（前月実残＋営業CFで予測した翌月末想定残高）' },
-    {                          label: '実際の預金残高',       accessor: m => m.bankAct  ?? 0, format: fmtYen, info: 'PL(全社) 341行目（毎月10日時点の通帳実残）／予測月は空欄' },
+    { section: 'キャッシュ',   label: '現金増減額（営業CF）', accessor: m => m.cfOps,   format: fmtYen, info: 'PL(全社) 339行目（営業活動によるキャッシュフロー）' },
+    {                          label: '想定の預金残高',       accessor: m => m.bankEst, format: fmtYen, info: 'PL(全社) 340行目（前月実残＋営業CFで予測した翌月末想定残高）' },
+    {                          label: '実際の預金残高',       accessor: m => m.bankAct, format: fmtYen, info: 'PL(全社) 341行目（毎月10日時点の通帳実残）／予測月は空欄' },
   ]
 
   return (
@@ -225,55 +243,147 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
             ))}
           </div>
 
-          {/* ── ① 売上トレンドグラフ ── */}
+          {/* ── ① 売上 × 経費 トレンドグラフ ── */}
           <div className="grid border-b border-gray-100" style={gridStyle}>
             <div className="px-4 py-4 flex flex-col justify-center">
-              <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">売上トレンド</div>
-              <div className="text-xs text-gray-600 mt-1">実績 / 計画 / 予測</div>
-              <div className="flex flex-col gap-1 mt-2 text-[10px] text-gray-500">
+              <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">売上 × 経費</div>
+              <div className="text-xs text-gray-600 mt-1">距離 = 利益</div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2 text-[10px] text-gray-500">
+                {/* 売上系 */}
                 <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2.5"/></svg>実績
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2.5"/></svg>売上実
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#999" strokeWidth="2"/></svg>計画
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#e65100" strokeWidth="2.5"/></svg>経費実
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>予測
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#bdbdbd" strokeWidth="2"/></svg>売上計
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#ffcc80" strokeWidth="2"/></svg>経費計
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>売上予
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#e65100" strokeWidth="2" strokeDasharray="4 2"/></svg>経費予
                 </span>
               </div>
             </div>
-            <div className="col-span-7 h-[220px]" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
+            <div className="h-[260px]" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
               <TimelineSalesChart
                 months={displayMonths.map(m => ({ month: m.month, isActual: m.isActual }))}
-                actual={actual}
-                plan={planPts}
-                forecast={forecastPts}
+                revActual={revActualPts}
+                revPlan={revPlanPts}
+                revForecast={revForecastPts}
+                expActual={expActualPts}
+                expPlan={expPlanPts}
+                expForecast={expForecastPts}
               />
             </div>
           </div>
 
-          {/* ── ② 成長判定（事務所別） ── */}
+          {/* ── ② 成長判定（事務所別 + クリック展開） ── */}
           {officeOrder.length > 0 && (
             <>
-              {officeOrder.map((office, oi) => (
-                <div key={office} className={`grid ${oi === 0 ? 'border-t-2 border-gray-200' : 'border-t border-gray-50'} hover:bg-gray-50/30`} style={gridStyle}>
-                  <div className="px-4 py-2.5 flex items-center">
-                    {oi === 0 && (
-                      <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest mr-2">成長判定</span>
-                    )}
-                    <span className={`text-xs ${oi === 0 ? 'font-semibold text-gray-700' : 'text-gray-500'}`}>{office}</span>
-                    {oi === 0 && <InfoIcon desc="iriam 月次成長判定（◎=最高/○=基準/✖=最低）。Tier係数が補正される。実績=塗りつぶし、予測=透過。" />}
-                  </div>
-                  {displayMonths.map(m => {
-                    const j = judgeMap[office]?.[m.month]
-                    return (
-                      <div key={m.month} className={`flex items-center justify-center py-2 border-l border-gray-100 ${monthBg(m)}`}>
-                        {j ? <JudgeBadge judge={j.judge} isActual={j.isActual} /> : <span className="text-gray-300 text-xs">—</span>}
+              {officeOrder.map((office, oi) => {
+                const officeData = growthBonus.find(o => o.office === office)
+                const isExpanded = !!expandedOffices[office]
+                // 達成条件用：最新実績月のデータ
+                const latestActual = officeData?.months.filter(m => m.isActual).slice(-1)[0]
+
+                return (
+                  <div key={office}>
+                    {/* バッジ行（クリックで展開） */}
+                    <div className={`grid cursor-pointer ${oi === 0 ? 'border-t-2 border-gray-200' : 'border-t border-gray-50'} hover:bg-gray-50/50 transition-colors`}
+                         style={gridStyle}
+                         onClick={() => toggleOffice(office)}>
+                      <div className="px-4 py-2.5 flex items-center">
+                        {oi === 0 && (
+                          <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest mr-2">成長判定</span>
+                        )}
+                        <span className={`text-[10px] mr-1.5 transition-transform inline-block ${isExpanded ? 'rotate-90' : ''} text-gray-400`}>▶</span>
+                        <span className={`text-xs ${oi === 0 ? 'font-semibold text-gray-700' : 'text-gray-500'}`}>{office}</span>
+                        {oi === 0 && <InfoIcon desc="iriam 月次成長判定（◎=最高/○=基準/✖=最低）。Tier係数が補正される。事務所名クリックで達成条件を展開。" />}
                       </div>
-                    )
-                  })}
-                </div>
-              ))}
+                      {displayMonths.map(m => {
+                        const j = judgeMap[office]?.[m.month]
+                        return (
+                          <div key={m.month} className={`flex items-center justify-center py-2 border-l border-gray-100 ${monthBg(m)}`}>
+                            {j ? <JudgeBadge judge={j.judge} isActual={j.isActual} /> : <span className="text-gray-300 text-xs">—</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* 展開時：達成条件詳細 */}
+                    {isExpanded && latestActual && (latestActual.singleThreshold || latestActual.req3m) ? (
+                      <div className="grid border-t border-gray-50 bg-blue-50/20" style={gridStyle}>
+                        <div className="px-4 py-3 text-[10px] text-gray-400 font-semibold">
+                          {latestActual.month.substring(5).replace(/^0/, '')}月 の ◎達成条件
+                        </div>
+                        <div className="px-3 py-3 space-y-2" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
+                          {latestActual.singleThreshold && latestActual.singleThreshold > 0 && (() => {
+                            const dia = latestActual.dia || 0
+                            const target = latestActual.singleThreshold
+                            const gap = Math.max(0, target - dia)
+                            const pct = Math.min(100, (dia / target) * 100)
+                            const achieved = gap === 0
+                            return (
+                              <div>
+                                <div className="flex justify-between text-[10px] mb-1">
+                                  <span className="text-gray-500">単月基準</span>
+                                  <span className={achieved ? 'text-emerald-600 font-bold' : 'text-gray-700 font-medium'}>
+                                    {achieved ? '✓ 達成' : `あと ${fmtDiaLocal(gap)} dia`}
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-blue-400'}`}
+                                       style={{ width: `${pct}%` }} />
+                                </div>
+                                <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
+                                  <span>{fmtDiaLocal(dia)} dia</span>
+                                  <span>目標 {fmtDiaLocal(target)}</span>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                          {latestActual.req3m && latestActual.req3m > 0 && (() => {
+                            const dia = latestActual.dia || 0
+                            const target = latestActual.req3m
+                            const gap = Math.max(0, target - dia)
+                            const pct = Math.min(100, (dia / target) * 100)
+                            const achieved = gap === 0
+                            return (
+                              <div>
+                                <div className="flex justify-between text-[10px] mb-1">
+                                  <span className="text-gray-500">3ヶ月基準</span>
+                                  <span className={achieved ? 'text-emerald-600 font-bold' : 'text-gray-700 font-medium'}>
+                                    {achieved ? '✓ 達成' : `あと ${fmtDiaLocal(gap)} dia`}
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-purple-400'}`}
+                                       style={{ width: `${pct}%` }} />
+                                </div>
+                                <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
+                                  <span>{fmtDiaLocal(dia)} dia</span>
+                                  <span>目標 {fmtDiaLocal(target)}</span>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                          {latestActual.minDia && latestActual.minDia > 0 && (latestActual.dia || 0) < latestActual.minDia && (
+                            <div className="text-[10px] text-red-600 font-semibold">
+                              ⚠ 最低ライン（{fmtDiaLocal(latestActual.minDia)} dia）割れ
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
             </>
           )}
 

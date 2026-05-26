@@ -9,6 +9,7 @@ type MonthSnap = {
   expTotal: number; expKaito: number; expUnyo: number; expMk: number
   expCreative: number; expDesign: number; expMgmt: number; expCorp: number; expOther: number
   profit: number
+  _revForecastUsed?: boolean  // 予測売上を補完で使用したか
 }
 
 type FullPL = { monthly: MonthSnap[] }
@@ -53,14 +54,36 @@ export default function MonthlySummaryTable({ latestMonth }: { latestMonth: stri
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/data?action=fullpl')
-      .then(r => r.json())
-      .then(j => {
-        if (j.status === 'ok' && j.data?.fullpl?.monthly) {
-          setData(j.data.fullpl.monthly)
-        } else {
-          setError('データが取得できませんでした')
+    // fullpl + summary を並行取得し、予測月の売上をrevForecastから補完
+    Promise.all([
+      fetch('/api/data?action=fullpl').then(r => r.json()),
+      fetch('/api/data?action=summary').then(r => r.json())
+    ])
+      .then(([plRes, sumRes]) => {
+        if (plRes.status !== 'ok' || !plRes.data?.fullpl?.monthly) {
+          setError('PLデータが取得できませんでした')
+          return
         }
+        const monthly: MonthSnap[] = plRes.data.fullpl.monthly
+        const revForecast: { month: string; revTaxIn: number }[] =
+          sumRes.data?.summary?.revForecast || []
+        const fcMap = Object.fromEntries(revForecast.map(f => [f.month, f.revTaxIn / 1.1]))
+
+        // 予測月で売上が0なら DB_成長予測から補完（成長ボーナス込み・税抜き換算）
+        const merged = monthly.map(m => {
+          if (!m.isActual && (!m.revTaxEx || m.revTaxEx === 0) && fcMap[m.month]) {
+            const estRevTaxEx = fcMap[m.month]
+            return {
+              ...m,
+              revTaxEx: estRevTaxEx,
+              revTaxIn: estRevTaxEx * 1.1,
+              profit: estRevTaxEx - m.expTotal,
+              _revForecastUsed: true
+            }
+          }
+          return m
+        })
+        setData(merged)
       })
       .catch(() => setError('通信エラー'))
   }, [])
@@ -127,7 +150,9 @@ export default function MonthlySummaryTable({ latestMonth }: { latestMonth: stri
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
         <h2 className="font-bold text-gray-800 text-sm tracking-tight">月別サマリ（前後3ヶ月）</h2>
-        <p className="text-[10px] text-gray-400 mt-0.5">PL(全社) シートの値と連動 ／ 灰背景=予測月</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          PL(全社) シートの値と連動 ／ 灰背景=予測月 ／ 予測月の売上は DB_成長予測（成長ボーナス込み）から補完
+        </p>
       </div>
 
       <div className="overflow-x-auto">

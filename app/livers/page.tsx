@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import Sidebar from '@/components/Sidebar'
+import ChartSection from '@/components/ChartSection'
+import { type SummaryData } from '@/components/FinanceDashboardClient'
 
 // ─── Types ───────────────────────────────────────────────────
 type Liver = {
@@ -258,6 +260,7 @@ export default function LiversPage() {
   const [tier, setTier]           = useState('ALL')
   const [rankBand, setRankBand]   = useState('ALL')
   const [alertOnly, setAlertOnly] = useState(false)
+  const [chartData, setChartData] = useState<SummaryData|null>(null)
 
   useEffect(() => {
     const url = month ? `/api/data?action=livers&month=${month}` : '/api/data?action=livers'
@@ -267,6 +270,18 @@ export default function LiversPage() {
       setLoading(false)
     }).catch(()=>setLoading(false))
   }, [month])
+
+  // グラフ用データを取得
+  useEffect(() => {
+    fetch('/api/data?action=summary')
+      .then(r => r.json())
+      .then(j => {
+        if (j.status === 'ok' && j.data?.summary) {
+          setChartData(j.data.summary)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const allLivers = useMemo(()=>data?.livers||[], [data])
 
@@ -295,6 +310,19 @@ export default function LiversPage() {
           <h1 className="text-2xl font-bold text-gray-900">ライバー管理</h1>
           <p className="text-sm text-gray-400 mt-1">最新月: {latestMonth||'—'} ／ {livers.length} 人表示中</p>
         </div>
+
+        {/* グラフセクション */}
+        {chartData && (
+          <div className="mb-8">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+            <ChartSection
+              diaActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.dia }))}
+              diaForecast={(chartData.diaForecast || []).map(f => ({ month: f.month, value: f.dia }))}
+              actActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.active }))}
+              actForecast={(chartData.activeForecast || []).map(f => ({ month: f.month, value: f.active }))}
+            />
+          </div>
+        )}
 
         {/* フィルターバー */}
         <div className="flex flex-wrap items-center gap-2 mb-4">

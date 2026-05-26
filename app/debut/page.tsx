@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Sidebar from '@/components/Sidebar'
+import ChartSection from '@/components/ChartSection'
+import { type SummaryData } from '@/components/FinanceDashboardClient'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type CohortRow = {
@@ -435,6 +437,7 @@ function CohortTable({ cohort }: { cohort: CohortRow[] }) {
 export default function DebutPage() {
   const [data, setData]       = useState<ApiData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<SummaryData | null>(null)
 
   useEffect(() => {
     fetch('/api/data?action=debut')
@@ -442,6 +445,18 @@ export default function DebutPage() {
       .then(j => { if (j.status === 'ok') setData(j.data.debut) })
       .catch(() => {})
       .finally(() => setLoading(false))
+  }, [])
+
+  // グラフ用データを取得
+  useEffect(() => {
+    fetch('/api/data?action=summary')
+      .then(r => r.json())
+      .then(j => {
+        if (j.status === 'ok' && j.data?.summary) {
+          setChartData(j.data.summary)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   return (
@@ -465,8 +480,16 @@ export default function DebutPage() {
         {/* コンテンツ */}
         <div className="space-y-8">
 
-          {/* ① デビュー前一覧（常時表示） */}
-          <PreDebutSection />
+          {/* ① グラフセクション（最上部） */}
+          {chartData && (
+            <div>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
+              <ChartSection
+                debActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.debut }))}
+                debForecast={(chartData.debutForecast || []).map(f => ({ month: f.month, value: f.debut }))}
+              />
+            </div>
+          )}
 
           {/* ② 以下はAPIデータが必要 */}
           {loading ? (
@@ -487,6 +510,9 @@ export default function DebutPage() {
               <CohortTable cohort={data.cohort} />
             </>
           )}
+
+          {/* ④ デビュー前一覧（最下部） */}
+          <PreDebutSection />
         </div>
       </main>
     </div>

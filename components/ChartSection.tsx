@@ -6,10 +6,10 @@ const TrendForecastChart = dynamic(() => import('./TrendForecastChart'), { ssr: 
 type DataPoint = { month: string; value: number }
 
 type Props = {
-  revActual: DataPoint[]; revForecast: DataPoint[]
-  diaActual: DataPoint[]; diaForecast: DataPoint[]
-  actActual: DataPoint[]; actForecast: DataPoint[]
-  debActual: DataPoint[]; debForecast: DataPoint[]
+  revActual?: DataPoint[]; revForecast?: DataPoint[]
+  diaActual?: DataPoint[]; diaForecast?: DataPoint[]
+  actActual?: DataPoint[]; actForecast?: DataPoint[]
+  debActual?: DataPoint[]; debForecast?: DataPoint[]
 }
 
 const InfoRev = (
@@ -56,25 +56,29 @@ export default function ChartSection({
 }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4">
-      <TrendForecastChart
-        title="売上（税込・全社）"
-        color="#1565c0"
-        actual={revActual}
-        forecast={revForecast}
-        fmt={v => v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`}
-        height={200}
-        info={InfoRev}
-      />
-      <TrendForecastChart
-        title="応援ダイヤ（全社）"
-        color="#43a047"
-        actual={diaActual}
-        forecast={diaForecast}
-        fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
-        height={200}
-        info={InfoDia}
-      />
-      {actActual.length > 0 && (
+      {revActual && revForecast && (
+        <TrendForecastChart
+          title="売上（税込・全社）"
+          color="#1565c0"
+          actual={revActual}
+          forecast={revForecast}
+          fmt={v => v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`}
+          height={200}
+          info={InfoRev}
+        />
+      )}
+      {diaActual && diaForecast && (
+        <TrendForecastChart
+          title="応援ダイヤ（全社）"
+          color="#43a047"
+          actual={diaActual}
+          forecast={diaForecast}
+          fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
+          height={200}
+          info={InfoDia}
+        />
+      )}
+      {actActual && actForecast && actActual.length > 0 && (
         <TrendForecastChart
           title="アクティブライバー数（全社）"
           color="#0097a7"
@@ -85,7 +89,7 @@ export default function ChartSection({
           info={InfoAct}
         />
       )}
-      {debActual.length > 0 && (
+      {debActual && debForecast && debActual.length > 0 && (
         <TrendForecastChart
           title="デビュー数（全社）"
           color="#7b1fa2"

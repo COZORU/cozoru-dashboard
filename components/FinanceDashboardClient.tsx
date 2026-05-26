@@ -9,7 +9,7 @@ type SectionSnap = {
   t1: number; t2: number; t3: number; debut: number; c5Count: number
 }
 
-type TrendItem = { month: string; revTaxIn: number; dia: number; active: number; debut: number }
+type TrendItem = { month: string; revTaxIn: number; dia: number; active: number; debut: number; c5Count?: number; c5Rate?: number }
 
 type GrowthMonthItem = {
   month: string; judge: string; dia: number
@@ -769,18 +769,17 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </div>
       </div>
 
-      {/* チャート */}
+      {/* チャート - 売上のみ大型表示 */}
       {trend.length > 0 && (
         <div className="mb-8">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-            トレンド ＆ 3ヶ月予測
+            売上トレンド ＆ 3ヶ月予測
           </p>
-          <ChartSection
-            revActual={revActual} revForecast={revForecast}
-            diaActual={diaActual} diaForecast={diaForecast}
-            actActual={actActual} actForecast={actForecast}
-            debActual={debActual} debForecast={debForecast}
-          />
+          <div style={{ maxWidth: '600px' }}>
+            <ChartSection
+              revActual={revActual} revForecast={revForecast}
+            />
+          </div>
         </div>
       )}
 

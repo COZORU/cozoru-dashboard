@@ -131,16 +131,54 @@ function GrowthBonusSection({ gb }: { gb: NonNullable<SummaryData['growthBonus']
               {/* 区切り */}
               <div className="self-stretch border-l border-dashed border-gray-200 shrink-0" />
 
-              {/* 予測バッジ列 */}
+              {/* 予測バッジ列 + 根拠・◎条件数値 */}
               <div className="shrink-0">
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">このまま行くと</div>
-                <div className="flex gap-3">
-                  {forecast.map(m => (
-                    <div key={m.month} className="text-center">
-                      <div className="text-[10px] text-gray-400 mb-1.5">{fmtM(m.month)}</div>
-                      <JudgeBadge judge={m.judge} forecast />
-                    </div>
-                  ))}
+                <div className="flex gap-4">
+                  {forecast.map(m => {
+                    const meetsSingle = m.singleThreshold > 0 && m.dia >= m.singleThreshold
+                    const meets3m     = m.req3m > 0 && m.dia >= m.req3m
+                    return (
+                      <div key={m.month} className="flex flex-col items-center">
+                        <div className="text-[10px] text-gray-400 mb-1.5">{fmtM(m.month)}(予)</div>
+                        <JudgeBadge judge={m.judge} forecast />
+                        {/* 根拠・必要数値 */}
+                        <div className="mt-2 space-y-1 w-24">
+                          {/* 予測値 */}
+                          <div className="flex justify-between text-[9px]">
+                            <span className="text-gray-400">予測</span>
+                            <span className="font-semibold text-gray-600 tabular-nums">{fmtDia(m.dia)}</span>
+                          </div>
+                          {/* 単月基準 */}
+                          {m.singleThreshold > 0 && (
+                            <div className="flex justify-between text-[9px]">
+                              <span className="text-gray-400">単月◎</span>
+                              <span className={`font-semibold tabular-nums ${meetsSingle ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {fmtDia(m.singleThreshold)}
+                                <span className="ml-0.5">{meetsSingle ? '✓' : '✗'}</span>
+                              </span>
+                            </div>
+                          )}
+                          {/* 3ヶ月基準 */}
+                          {m.req3m > 0 && (
+                            <div className="flex justify-between text-[9px]">
+                              <span className="text-gray-400">3M◎</span>
+                              <span className={`font-semibold tabular-nums ${meets3m ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {fmtDia(m.req3m)}
+                                <span className="ml-0.5">{meets3m ? '✓' : '✗'}</span>
+                              </span>
+                            </div>
+                          )}
+                          {/* 最低ライン警告 */}
+                          {m.minDia > 0 && m.dia < m.minDia && (
+                            <div className="text-[9px] text-red-500 font-semibold text-center pt-0.5">
+                              最低割れ
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                   {forecast.length === 0 && (
                     <span className="text-xs text-gray-300 self-center">予測データなし</span>
                   )}
@@ -402,12 +440,17 @@ function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
 }
 
 // ─── ライバー 階層展開コンポーネント ────────────────────────────────
-function LiverSection({ cur, pctDia, pctLeveshe, pctDebut, isGlobal }: {
+function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGlobal }: {
   cur: SectionSnap
+  off: Record<string, SectionSnap>
+  allOffices: string[]
   pctDia: number | null; pctLeveshe: number | null; pctDebut: number | null
   isGlobal: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]           = useState(false)
+  const [view, setView]           = useState<'total' | 'office'>('total')
+
+  const officeKeys = allOffices.filter(o => o !== '全社合計' && off[o])
 
   function PctBadge({ pct }: { pct: number | null }) {
     if (pct === null || pct === undefined) return null
@@ -419,50 +462,46 @@ function LiverSection({ cur, pctDia, pctLeveshe, pctDebut, isGlobal }: {
     )
   }
 
+  const TIER_COLS = [
+    { label: 'T1（3万+）',    key: 't1' as const, color: 'bg-blue-500',  text: 'text-blue-700',  badge: 'bg-blue-50 text-blue-700' },
+    { label: 'T2（1〜3万）',  key: 't2' as const, color: 'bg-green-500', text: 'text-green-700', badge: 'bg-green-50 text-green-700' },
+    { label: 'T3（1万未満）', key: 't3' as const, color: 'bg-gray-400',  text: 'text-gray-600',  badge: 'bg-gray-100 text-gray-600' },
+  ]
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
-      {/* ヘッダー */}
+      {/* ヘッダーボタン */}
       <button
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center px-6 py-5 hover:bg-emerald-50/30 transition-colors group"
       >
         <div className="flex-1 flex items-center gap-6 flex-wrap">
-          {/* 応援ダイヤ（メイン） */}
           <div className="text-left">
             <div className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mb-0.5">応援ダイヤ</div>
             <div className="text-3xl font-black text-gray-900 tracking-tight tabular-nums">
-              {cur.dia ? `${fmtDia(cur.dia)}` : '—'}
+              {cur.dia ? fmtDia(cur.dia) : '—'}
               <span className="text-lg font-semibold text-gray-400 ml-1">dia</span>
             </div>
             {isGlobal && <PctBadge pct={pctDia} />}
           </div>
-
-          {/* サブ指標 */}
           <div className="flex gap-5 pl-6 border-l border-gray-100 flex-wrap">
             <div>
               <div className="text-[10px] text-gray-400 mb-0.5">レベシェ</div>
-              <div className="text-lg font-bold text-orange-700 tabular-nums">
-                {cur.leveshe ? fmtYen(cur.leveshe) : '—'}
-              </div>
+              <div className="text-lg font-bold text-orange-700 tabular-nums">{cur.leveshe ? fmtYen(cur.leveshe) : '—'}</div>
               {isGlobal && <PctBadge pct={pctLeveshe} />}
             </div>
             <div>
               <div className="text-[10px] text-gray-400 mb-0.5">今月デビュー</div>
-              <div className="text-lg font-bold text-purple-700">
-                {cur.debut !== undefined ? `${cur.debut} 人` : '—'}
-              </div>
+              <div className="text-lg font-bold text-purple-700">{cur.debut !== undefined ? `${cur.debut} 人` : '—'}</div>
               {isGlobal && <PctBadge pct={pctDebut} />}
             </div>
             <div>
               <div className="text-[10px] text-gray-400 mb-0.5">C5達成</div>
-              <div className="text-lg font-bold text-red-700">
-                {cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'}
-              </div>
+              <div className="text-lg font-bold text-red-700">{cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'}</div>
               <span className="text-[9px] text-gray-400">翌月確定</span>
             </div>
           </div>
         </div>
-
         <div className={`flex items-center gap-2 text-xs font-medium transition-colors
           ${open ? 'text-emerald-500' : 'text-gray-400 group-hover:text-emerald-500'}`}>
           <span className={`text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
@@ -470,58 +509,126 @@ function LiverSection({ cur, pctDia, pctLeveshe, pctDebut, isGlobal }: {
         </div>
       </button>
 
-      {/* ライバー基盤 展開 */}
+      {/* 展開エリア */}
       {open && (
-        <div className="border-t border-gray-100 px-6 py-5">
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
-              <div className="text-[10px] text-gray-400 mb-1">登録ライバー数</div>
-              <div className="text-2xl font-black text-gray-800 tabular-nums">
-                {cur.registered ?? '—'}
-                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
-              </div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
-              <div className="text-[10px] text-gray-400 mb-1">アクティブ</div>
-              <div className="text-2xl font-black text-gray-800 tabular-nums">
-                {cur.active ?? '—'}
-                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
-              </div>
-              {cur.registered > 0 && (
-                <div className="text-[10px] text-gray-400 mt-1">
-                  ({Math.round((cur.active / cur.registered) * 100)}% 稼働率)
-                </div>
-              )}
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
-              <div className="text-[10px] text-gray-400 mb-1">デビュー数</div>
-              <div className="text-2xl font-black text-purple-700 tabular-nums">
-                {cur.debut ?? '—'}
-                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
-              </div>
-            </div>
+        <div className="border-t border-gray-100">
+          {/* 全社 / 個社別 切替タブ */}
+          <div className="flex border-b border-gray-100 px-6 pt-4 gap-1">
+            {(['total', 'office'] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-t-lg transition-colors ${
+                  view === v
+                    ? 'bg-emerald-500 text-white'
+                    : 'text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                {v === 'total' ? '全社' : '個社別'}
+              </button>
+            ))}
           </div>
-          {/* T1/T2/T3 バー */}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="text-[10px] text-gray-400 mb-3 font-semibold uppercase tracking-wider">ティア構成</div>
-            {[
-              { label: 'T1（3万+）',    key: 't1' as const, color: 'bg-blue-500',  text: 'text-blue-700' },
-              { label: 'T2（1〜3万）',  key: 't2' as const, color: 'bg-green-500', text: 'text-green-700' },
-              { label: 'T3（1万未満）', key: 't3' as const, color: 'bg-gray-400',  text: 'text-gray-600' },
-            ].map(({ label, key, color, text }) => {
-              const val = cur[key] ?? 0
-              const pct = cur.active > 0 ? (val / cur.active) * 100 : 0
-              return (
-                <div key={key} className="flex items-center gap-3 mb-2">
-                  <span className="text-xs text-gray-500 w-28 shrink-0">{label}</span>
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+
+          {/* ── 全社ビュー ── */}
+          {view === 'total' && (
+            <div className="px-6 py-5">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[
+                  { label: '登録ライバー数', value: `${cur.registered ?? '—'} 人`, sub: null, color: 'text-gray-800' },
+                  { label: 'アクティブ',     value: `${cur.active ?? '—'} 人`,
+                    sub: cur.registered > 0 ? `稼働率 ${Math.round((cur.active / cur.registered) * 100)}%` : null,
+                    color: 'text-gray-800' },
+                  { label: 'デビュー数',     value: `${cur.debut ?? '—'} 人`,     sub: null, color: 'text-purple-700' },
+                ].map(({ label, value, sub, color }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl p-4">
+                    <div className="text-[10px] text-gray-400 mb-1">{label}</div>
+                    <div className={`text-2xl font-black tabular-nums ${color}`}>{value}</div>
+                    {sub && <div className="text-[10px] text-gray-400 mt-1">{sub}</div>}
                   </div>
-                  <span className={`text-xs font-bold w-12 text-right tabular-nums ${text}`}>{val} 人</span>
-                </div>
-              )
-            })}
-          </div>
+                ))}
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-[10px] text-gray-400 mb-3 font-semibold uppercase tracking-wider">ティア構成</div>
+                {TIER_COLS.map(({ label, key, color, text }) => {
+                  const val = cur[key] ?? 0
+                  const pct = cur.active > 0 ? (val / cur.active) * 100 : 0
+                  return (
+                    <div key={key} className="flex items-center gap-3 mb-2">
+                      <span className="text-xs text-gray-500 w-28 shrink-0">{label}</span>
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                      </div>
+                      <span className={`text-xs font-bold w-12 text-right tabular-nums ${text}`}>{val} 人</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── 個社別ビュー ── */}
+          {view === 'office' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+                    <th className="px-4 py-2.5 text-left font-medium w-28">事務所</th>
+                    <th className="px-3 py-2.5 text-right font-medium">登録</th>
+                    <th className="px-3 py-2.5 text-right font-medium">アクティブ</th>
+                    <th className="px-3 py-2.5 text-right font-medium">稼働率</th>
+                    <th className="px-3 py-2.5 text-right font-medium">T1（3万+）</th>
+                    <th className="px-3 py-2.5 text-right font-medium">T2（1〜3万）</th>
+                    <th className="px-3 py-2.5 text-right font-medium">T3（1万未満）</th>
+                    <th className="px-3 py-2.5 text-right font-medium">デビュー</th>
+                    <th className="px-3 py-2.5 text-right font-medium">応援ダイヤ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* 全社合計行 */}
+                  {off['全社合計'] && (() => {
+                    const s = off['全社合計']
+                    const rate = s.registered > 0 ? Math.round((s.active / s.registered) * 100) : 0
+                    return (
+                      <tr className="bg-slate-50 border-b border-gray-100 font-semibold">
+                        <td className="px-4 py-3 text-blue-900 font-bold">全社</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-700">{s.registered}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-700">{s.active}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-500">{rate}%</td>
+                        {TIER_COLS.map(({ key, badge }) => (
+                          <td key={key} className="px-3 py-3 text-right">
+                            <span className={`inline-block px-2 py-0.5 rounded font-bold tabular-nums ${badge}`}>{s[key] ?? '—'}</span>
+                          </td>
+                        ))}
+                        <td className="px-3 py-3 text-right tabular-nums text-purple-700 font-bold">{s.debut}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-emerald-700 font-bold">{fmtDia(s.dia)}</td>
+                      </tr>
+                    )
+                  })()}
+                  {/* 個社 */}
+                  {officeKeys.map((office, oi) => {
+                    const s = off[office]
+                    if (!s) return null
+                    const rate = s.registered > 0 ? Math.round((s.active / s.registered) * 100) : 0
+                    return (
+                      <tr key={office} className={`border-b border-gray-50 ${oi % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
+                        <td className="px-4 py-3 font-medium text-gray-700">{OFFICE_LABEL[office] || office}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-600">{s.registered}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-600">{s.active}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-gray-400">{rate}%</td>
+                        {TIER_COLS.map(({ key, badge }) => (
+                          <td key={key} className="px-3 py-3 text-right">
+                            <span className={`inline-block px-2 py-0.5 rounded tabular-nums ${badge}`}>{s[key] ?? '—'}</span>
+                          </td>
+                        ))}
+                        <td className="px-3 py-3 text-right tabular-nums text-purple-600">{s.debut}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{fmtDia(s.dia)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -603,6 +710,8 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-6">ライバー</p>
       <LiverSection
         cur={cur}
+        off={off}
+        allOffices={allOffices}
         pctDia={isGlobal ? data.pctDia : null}
         pctLeveshe={isGlobal ? data.pctLeveshe : null}
         pctDebut={isGlobal ? data.pctDebut : null}

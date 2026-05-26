@@ -92,9 +92,9 @@ export default function TimelineSalesChart({
           <ReferenceLine x={lastActualMonth} stroke="#90caf9" strokeDasharray="4 2" />
         )}
 
-        {/* 売上系 */}
+        {/* 売上系 - 青系トーンで統一 */}
         <Line type="monotone" dataKey="revPlan" name="売上 計画"
-              stroke="#bdbdbd" strokeWidth={2}
+              stroke="#90caf9" strokeWidth={2}
               dot={{ r: 2 }} connectNulls={false} />
         <Line type="monotone" dataKey="revAct" name="売上 実績"
               stroke={REV_COLOR} strokeWidth={2.5}
@@ -104,9 +104,9 @@ export default function TimelineSalesChart({
               dot={{ r: 3, fill: '#fff', stroke: REV_COLOR, strokeWidth: 2 }}
               connectNulls={false} />
 
-        {/* 経費系 */}
+        {/* 経費系 - オレンジ系トーンで統一 */}
         <Line type="monotone" dataKey="expPlan" name="経費 計画"
-              stroke="#ffcc80" strokeWidth={2}
+              stroke="#ffb74d" strokeWidth={2}
               dot={{ r: 2 }} connectNulls={false} />
         <Line type="monotone" dataKey="expAct" name="経費 実績"
               stroke={EXP_COLOR} strokeWidth={2.5}

@@ -257,10 +257,10 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                   <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#e65100" strokeWidth="2.5"/></svg>経費実
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#bdbdbd" strokeWidth="2"/></svg>売上計
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#90caf9" strokeWidth="2"/></svg>売上計
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#ffcc80" strokeWidth="2"/></svg>経費計
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#ffb74d" strokeWidth="2"/></svg>経費計
                 </span>
                 <span className="flex items-center gap-1">
                   <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>売上予
@@ -316,70 +316,66 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                       })}
                     </div>
 
-                    {/* 展開時：達成条件詳細 */}
-                    {isExpanded && latestActual && (latestActual.singleThreshold || latestActual.req3m) ? (
-                      <div className="grid border-t border-gray-50 bg-blue-50/20" style={gridStyle}>
-                        <div className="px-4 py-3 text-[10px] text-gray-400 font-semibold">
-                          {latestActual.month.substring(5).replace(/^0/, '')}月 の ◎達成条件
-                        </div>
-                        <div className="px-3 py-3 space-y-2" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
-                          {latestActual.singleThreshold && latestActual.singleThreshold > 0 && (() => {
-                            const dia = latestActual.dia || 0
-                            const target = latestActual.singleThreshold
-                            const gap = Math.max(0, target - dia)
-                            const pct = Math.min(100, (dia / target) * 100)
-                            const achieved = gap === 0
+                    {/* 展開時：各月の単月基準・3ヶ月基準・応援ダイヤ実績/予測 を数値で */}
+                    {isExpanded && officeData ? (
+                      <>
+                        {/* 行: 応援ダイヤ（実績/予測） */}
+                        <div className="grid border-t border-gray-50 bg-blue-50/20" style={gridStyle}>
+                          <div className="px-4 py-1.5 pl-10 text-[10px] text-gray-500">応援ダイヤ</div>
+                          {displayMonths.map(m => {
+                            const gm = officeData.months.find(x => x.month === m.month)
                             return (
-                              <div>
-                                <div className="flex justify-between text-[10px] mb-1">
-                                  <span className="text-gray-500">単月基準</span>
-                                  <span className={achieved ? 'text-emerald-600 font-bold' : 'text-gray-700 font-medium'}>
-                                    {achieved ? '✓ 達成' : `あと ${fmtDiaLocal(gap)} dia`}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-blue-400'}`}
-                                       style={{ width: `${pct}%` }} />
-                                </div>
-                                <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
-                                  <span>{fmtDiaLocal(dia)} dia</span>
-                                  <span>目標 {fmtDiaLocal(target)}</span>
-                                </div>
+                              <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[11px] border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
+                                {gm?.dia ? fmtDiaLocal(gm.dia) : '—'}
                               </div>
                             )
-                          })()}
-                          {latestActual.req3m && latestActual.req3m > 0 && (() => {
-                            const dia = latestActual.dia || 0
-                            const target = latestActual.req3m
-                            const gap = Math.max(0, target - dia)
-                            const pct = Math.min(100, (dia / target) * 100)
-                            const achieved = gap === 0
+                          })}
+                        </div>
+                        {/* 行: 単月基準 */}
+                        <div className="grid border-t border-gray-50 bg-blue-50/20" style={gridStyle}>
+                          <div className="px-4 py-1.5 pl-10 text-[10px] text-gray-500">単月基準</div>
+                          {displayMonths.map(m => {
+                            const gm = officeData.months.find(x => x.month === m.month)
+                            const dia = gm?.dia || 0
+                            const target = gm?.singleThreshold || 0
+                            const achieved = target > 0 && dia >= target
                             return (
-                              <div>
-                                <div className="flex justify-between text-[10px] mb-1">
-                                  <span className="text-gray-500">3ヶ月基準</span>
-                                  <span className={achieved ? 'text-emerald-600 font-bold' : 'text-gray-700 font-medium'}>
-                                    {achieved ? '✓ 達成' : `あと ${fmtDiaLocal(gap)} dia`}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-purple-400'}`}
-                                       style={{ width: `${pct}%` }} />
-                                </div>
-                                <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
-                                  <span>{fmtDiaLocal(dia)} dia</span>
-                                  <span>目標 {fmtDiaLocal(target)}</span>
-                                </div>
+                              <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[10px] border-l border-gray-100 ${monthBg(m)}`}>
+                                {target > 0 ? (
+                                  <div>
+                                    <div className={monthText(m)}>{fmtDiaLocal(target)}</div>
+                                    <div className={`text-[9px] ${achieved ? 'text-emerald-600' : 'text-red-500'}`}>
+                                      {achieved ? '✓達成' : `あと${fmtDiaLocal(target - dia)}`}
+                                    </div>
+                                  </div>
+                                ) : <span className="text-gray-300">—</span>}
                               </div>
                             )
-                          })()}
-                          {latestActual.minDia && latestActual.minDia > 0 && (latestActual.dia || 0) < latestActual.minDia && (
-                            <div className="text-[10px] text-red-600 font-semibold">
-                              ⚠ 最低ライン（{fmtDiaLocal(latestActual.minDia)} dia）割れ
-                            </div>
-                          )}
+                          })}
                         </div>
-                      </div>
+                        {/* 行: 3ヶ月基準 */}
+                        <div className="grid border-t border-gray-50 bg-blue-50/20" style={gridStyle}>
+                          <div className="px-4 py-1.5 pl-10 text-[10px] text-gray-500">3ヶ月基準</div>
+                          {displayMonths.map(m => {
+                            const gm = officeData.months.find(x => x.month === m.month)
+                            const dia = gm?.dia || 0
+                            const target = gm?.req3m || 0
+                            const achieved = target > 0 && dia >= target
+                            return (
+                              <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[10px] border-l border-gray-100 ${monthBg(m)}`}>
+                                {target > 0 ? (
+                                  <div>
+                                    <div className={monthText(m)}>{fmtDiaLocal(target)}</div>
+                                    <div className={`text-[9px] ${achieved ? 'text-emerald-600' : 'text-red-500'}`}>
+                                      {achieved ? '✓達成' : `あと${fmtDiaLocal(target - dia)}`}
+                                    </div>
+                                  </div>
+                                ) : <span className="text-gray-300">—</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </>
                     ) : null}
                   </div>
                 )

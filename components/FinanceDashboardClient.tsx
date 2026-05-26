@@ -48,13 +48,6 @@ const OFFICE_LABEL: Record<string, string> = {
   'Tolance:全社': 'Tolance',
 }
 
-const CPN_ITEMS = [
-  { label: 'C5（30日50h）',    key: 'cpnC5',    color: '#c62828' },
-  { label: 'B2（デビューCPN）', key: 'cpnB2',   color: '#1565c0' },
-  { label: 'A（A1到達）',       key: 'cpnA',    color: '#e65100' },
-  { label: 'S（S1到達）',       key: 'cpnS',    color: '#6a1b9a' },
-  { label: 'その他',            key: 'cpnOther', color: '#546e7a' },
-] as const
 
 function fmtYen(v: number) {
   return v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`
@@ -207,6 +200,98 @@ function GrowthBonusSection({ gb }: { gb: NonNullable<SummaryData['growthBonus']
   )
 }
 
+// ─── PL階層ツリー コンポーネント ──────────────────────────────────────
+function TreeRow({ indent, label, value, bold = false, colorClass = 'text-gray-700',
+  toggleable = false, open = true, onToggle }: {
+  indent: number; label: string; value: string
+  bold?: boolean; colorClass?: string
+  toggleable?: boolean; open?: boolean; onToggle?: () => void
+}) {
+  return (
+    <div
+      className={`flex items-center gap-1 py-1.5 pr-3 rounded ${toggleable ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+      style={{ paddingLeft: 8 + indent * 18 }}
+      onClick={toggleable ? onToggle : undefined}
+    >
+      {toggleable
+        ? <span className="text-gray-400 text-[10px] w-3 shrink-0">{open ? '▾' : '▸'}</span>
+        : indent > 0
+          ? <span className="text-gray-300 text-xs w-3 shrink-0">└</span>
+          : <span className="w-3 shrink-0" />
+      }
+      <span className={`flex-1 text-sm ${bold ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>{label}</span>
+      <span className={`text-sm font-mono font-semibold ${colorClass}`}>{value}</span>
+    </div>
+  )
+}
+
+function PLHierarchySection({ cur, selectedOffice, latestMonth }: {
+  cur: SectionSnap; selectedOffice: string; latestMonth: string
+}) {
+  const [revOpen, setRevOpen] = useState(true)
+  const [cpnOpen, setCpnOpen] = useState(false)
+  const [liverOpen, setLiverOpen] = useState(true)
+
+  const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
+  const tax = Math.max(0, (cur.revTaxIn||0) - (cur.revTaxEx||0))
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
+      <div className="bg-slate-100 px-5 py-3 border-b border-slate-200">
+        <h2 className="text-slate-700 font-bold text-sm">
+          PL 内訳（{latestMonth}・{OFFICE_LABEL[selectedOffice] || selectedOffice}）
+        </h2>
+        <p className="text-slate-400 text-[11px] mt-0.5">▸ をクリックで展開</p>
+      </div>
+      <div className="px-3 py-3 grid grid-cols-2 gap-x-6 divide-x divide-gray-100">
+        {/* 左: 売上内訳 */}
+        <div>
+          <div className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase px-2 mb-1">売上内訳</div>
+          <TreeRow indent={0} label="売上（税込）" value={cur.revTaxIn ? fmtYen(cur.revTaxIn) : '—'}
+            bold colorClass="text-blue-800" toggleable open={revOpen} onToggle={() => setRevOpen(v => !v)} />
+          {revOpen && (
+            <>
+              <TreeRow indent={1} label="消費税相当" value={tax ? fmtYen(tax) : '—'} colorClass="text-gray-400" />
+              <TreeRow indent={1} label="売上（税抜）" value={cur.revTaxEx ? fmtYen(cur.revTaxEx) : '—'}
+                bold colorClass="text-blue-700" />
+              <TreeRow indent={2} label="投げ銭MF" value={cur.mf ? fmtYen(cur.mf) : '—'} colorClass="text-teal-700" />
+              <TreeRow indent={2} label="CPN報酬合計" value={cpnTotal ? fmtYen(cpnTotal) : '—'}
+                colorClass="text-green-700" toggleable open={cpnOpen} onToggle={() => setCpnOpen(v => !v)} />
+              {cpnOpen && (
+                <>
+                  <TreeRow indent={3} label="C5（30日50h）"     value={cur.cpnC5    ? fmtYen(cur.cpnC5)    : '—'} />
+                  <TreeRow indent={3} label="B2（デビューCPN）"  value={cur.cpnB2    ? fmtYen(cur.cpnB2)    : '—'} />
+                  <TreeRow indent={3} label="A（A1到達）"        value={cur.cpnA     ? fmtYen(cur.cpnA)     : '—'} />
+                  <TreeRow indent={3} label="S（S1到達）"        value={cur.cpnS     ? fmtYen(cur.cpnS)     : '—'} />
+                  <TreeRow indent={3} label="その他"             value={cur.cpnOther ? fmtYen(cur.cpnOther) : '—'} />
+                </>
+              )}
+              <TreeRow indent={2} label="レベルシェア" value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} colorClass="text-orange-700" />
+            </>
+          )}
+        </div>
+        {/* 右: ライバー基盤 */}
+        <div className="pl-6">
+          <div className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase px-2 mb-1">ライバー基盤</div>
+          <TreeRow indent={0} label="ライバー基盤" value="" bold
+            toggleable open={liverOpen} onToggle={() => setLiverOpen(v => !v)} />
+          {liverOpen && (
+            <>
+              <TreeRow indent={1} label="登録ライバー数" value={cur.registered !== undefined ? `${cur.registered} 人` : '—'} />
+              <TreeRow indent={1} label="アクティブ" value={cur.active !== undefined ? `${cur.active} 人` : '—'}
+                bold colorClass="text-gray-800" />
+              <TreeRow indent={2} label="T1（3万+）"    value={cur.t1 !== undefined ? `${cur.t1} 人` : '—'} colorClass="text-blue-700" />
+              <TreeRow indent={2} label="T2（1〜3万）"  value={cur.t2 !== undefined ? `${cur.t2} 人` : '—'} colorClass="text-green-700" />
+              <TreeRow indent={2} label="T3（1万未満）" value={cur.t3 !== undefined ? `${cur.t3} 人` : '—'} colorClass="text-gray-600" />
+              <TreeRow indent={1} label="デビュー" value={cur.debut !== undefined ? `${cur.debut} 人` : '—'} colorClass="text-purple-700" />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FinanceDashboardClient({ data }: { data: SummaryData }) {
   const off = data.officeSummary || {}
   const availableOffices = OFFICE_ORDER.filter(o => off[o] && off[o].revTaxIn > 0)
@@ -246,6 +331,27 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         ))}
       </div>
 
+      {/* トレンド＆予測チャート（常時表示） */}
+      {trend.length > 0 && (
+        <div className="mb-6">
+          <SectionLabel>トレンド ＆ 3ヶ月予測</SectionLabel>
+          <ChartSection
+            revActual={revActual} revForecast={revForecast}
+            diaActual={diaActual} diaForecast={diaForecast}
+            actActual={actActual} actForecast={actForecast}
+            debActual={debActual} debForecast={debForecast}
+          />
+        </div>
+      )}
+
+      {/* 成長ボーナス判定 */}
+      {data.growthBonus && data.growthBonus.offices.length > 0 && (
+        <>
+          <SectionLabel>成長ボーナス</SectionLabel>
+          <GrowthBonusSection gb={data.growthBonus} />
+        </>
+      )}
+
       {/* 売上 KPI */}
       <SectionLabel>売上</SectionLabel>
       <div className="grid grid-cols-4 gap-4 mb-4">
@@ -264,53 +370,8 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         <KPICard title="C5達成数"      value={cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'} color="#c62828" sub="翌月CSV取込後に確定" />
       </div>
 
-      {/* CPN内訳 */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-5 p-5">
-        <h2 className="text-sm font-bold text-gray-700 mb-3">
-          CPN報酬内訳（{data.latestMonth}・{OFFICE_LABEL[selectedOffice] || selectedOffice}）
-        </h2>
-        <div className="grid grid-cols-5 gap-3">
-          {CPN_ITEMS.map(({ label, key, color }) => (
-            <div key={key} className="bg-gray-50 rounded-lg p-3 border-l-[3px]" style={{ borderLeftColor: color }}>
-              <div className="text-xs text-gray-500 mb-1.5">{label}</div>
-              <div className="text-base font-bold text-gray-900">
-                {(cur as Record<string, number>)[key] ? fmtYen((cur as Record<string, number>)[key]) : '—'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ライバー基盤 */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-8 p-5">
-        <h2 className="text-sm font-bold text-gray-700 mb-4">ライバー基盤</h2>
-        <div className="grid grid-cols-6 gap-3">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="text-xs text-gray-500 mb-1">登録ライバー数</div>
-            <div className="text-xl font-bold text-gray-900">{cur.registered ?? '—'} 人</div>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="text-xs text-gray-500 mb-1">アクティブ</div>
-            <div className="text-xl font-bold text-gray-900">{cur.active ?? '—'} 人</div>
-          </div>
-          {[
-            { label: 'T1（3万+）',    key: 't1', color: 'bg-blue-100 text-blue-800' },
-            { label: 'T2（1万〜3万）', key: 't2', color: 'bg-green-100 text-green-800' },
-            { label: 'T3（1万未満）',  key: 't3', color: 'bg-gray-100 text-gray-700' },
-          ].map(({ label, key, color }) => (
-            <div key={key} className="bg-gray-50 rounded-xl p-4">
-              <div className="text-xs text-gray-500 mb-1">{label}</div>
-              <div className={`text-xl font-bold inline-block px-2 py-0.5 rounded ${color}`}>
-                {(cur as Record<string, number>)[key] ?? '—'} 人
-              </div>
-            </div>
-          ))}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="text-xs text-gray-500 mb-1">デビュー数</div>
-            <div className="text-xl font-bold text-purple-700">{cur.debut ?? '—'} 人</div>
-          </div>
-        </div>
-      </div>
+      {/* PL 内訳（個社別・ツリー形式） */}
+      <PLHierarchySection cur={cur} selectedOffice={selectedOffice} latestMonth={data.latestMonth} />
 
       {/* 事務所別サマリ比較表 */}
       {allOffices.length > 0 && (
@@ -373,27 +434,6 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* 成長ボーナス判定 */}
-      {data.growthBonus && data.growthBonus.offices.length > 0 && (
-        <>
-          <SectionLabel>成長ボーナス</SectionLabel>
-          <GrowthBonusSection gb={data.growthBonus} />
-        </>
-      )}
-
-      {/* トレンド＆予測チャート（全社のみ表示） */}
-      {isGlobal && trend.length > 0 && (
-        <div className="mb-6">
-          <SectionLabel>トレンド ＆ 3ヶ月予測</SectionLabel>
-          <ChartSection
-            revActual={revActual} revForecast={revForecast}
-            diaActual={diaActual} diaForecast={diaForecast}
-            actActual={actActual} actForecast={actForecast}
-            debActual={debActual} debForecast={debForecast}
-          />
         </div>
       )}
     </>

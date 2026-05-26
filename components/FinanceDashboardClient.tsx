@@ -762,18 +762,6 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </p>
         <MonthlyTimelineView latestMonth={effectiveMonth} />
       </div>
-
-      {/* 売上 */}
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>
-      <RevenueHierarchy
-        off={off}
-        allOffices={allOffices}
-        pctRevenue={isGlobal ? displayPctRev : null}
-        latestMonth={effectiveMonth}
-        overrideRevTaxIn={!isLatestMonth ? (trendItem?.revTaxIn ?? 0) : undefined}
-        isLatestMonth={isLatestMonth}
-      />
-
     </>
   )
 }

@@ -14,10 +14,12 @@ type TrendItem = { month: string; revTaxIn: number; dia: number; active: number;
 
 type ForecastItem = { month: string; value: number }
 
-type GrowthHistItem = { month: string; office: string; class: string; judge: string }
-type GrowthProgItem = {
-  office: string; month: string; elapsedRatio: number
-  currentDia: number; req3m: number; forecast: number; forecastJudge: string
+type GrowthMonthItem = {
+  month: string; judge: string; dia: number
+  singleThreshold: number; req3m: number; minDia: number; isActual: boolean
+}
+type GrowthOfficeItem = {
+  office: string; months: GrowthMonthItem[]
 }
 
 export type SummaryData = {
@@ -33,8 +35,7 @@ export type SummaryData = {
   activeForecast: { month: string; active: number }[]
   debutForecast: { month: string; debut: number }[]
   growthBonus?: {
-    history: GrowthHistItem[]
-    progress: GrowthProgItem[]
+    offices: GrowthOfficeItem[]
   }
 }
 
@@ -71,40 +72,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // 判定バッジのスタイル
-function judgeCls(j: string, large = false) {
-  const base = large
-    ? 'text-2xl font-black px-3 py-1 rounded-lg inline-block leading-none'
-    : 'text-[11px] font-bold px-1.5 py-0.5 rounded inline-block'
-  if (j === '◎') return `${base} bg-green-100 text-green-800 border border-green-200`
-  if (j === '✖') return `${base} bg-red-100 text-red-700 border border-red-200`
-  return `${base} bg-yellow-50 text-yellow-700 border border-yellow-200`
+function judgeCls(j: string, forecast = false) {
+  const base = forecast
+    ? 'text-[11px] font-bold px-1.5 py-0.5 rounded-sm inline-block border-dashed border'
+    : 'text-[11px] font-bold px-1.5 py-0.5 rounded inline-block border'
+  if (j === '◎') return `${base} bg-green-100 text-green-800 border-green-300`
+  if (j === '✖') return `${base} bg-red-100 text-red-700 border-red-300`
+  if (j === '○') return `${base} bg-yellow-50 text-yellow-700 border-yellow-300`
+  return `${base} bg-gray-100 text-gray-400 border-gray-200`
 }
 
-function GrowthBonusSection({
-  gb,
-}: {
-  gb: NonNullable<SummaryData['growthBonus']>
-}) {
-  const { history, progress } = gb
-
-  // 事務所別に実績をグループ化（直近6ヶ月）
-  const histByOffice: Record<string, GrowthHistItem[]> = {}
-  history.forEach(h => {
-    if (!histByOffice[h.office]) histByOffice[h.office] = []
-    histByOffice[h.office].push(h)
-  })
-  Object.keys(histByOffice).forEach(o => {
-    histByOffice[o] = histByOffice[o]
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6)
-  })
-
-  // 事務所別に今月進捗をマップ
-  const progByOffice: Record<string, GrowthProgItem> = {}
-  progress.forEach(p => { progByOffice[p.office] = p })
-
-  const offices = Object.keys(histByOffice).sort()
-  if (offices.length === 0) return null
+function GrowthBonusSection({ gb }: { gb: NonNullable<SummaryData['growthBonus']> }) {
+  const offices = gb.offices
+  if (!offices || offices.length === 0) return null
 
   // "2026-04" → "4月"
   function fmtM(ym: string) {
@@ -120,91 +100,98 @@ function GrowthBonusSection({
 
       <div className="divide-y divide-gray-50">
         {offices.map(office => {
-          const hist = histByOffice[office] || []
-          const prog = progByOffice[office]
-          const gap  = prog ? Math.max(0, prog.req3m - prog.forecast) : null
-          const pct  = prog && prog.req3m > 0
-            ? Math.min(110, Math.round(prog.forecast / prog.req3m * 100))
-            : null
+          const actual   = office.months.filter(m => m.isActual).slice(-4)   // 実績：直近4ヶ月
+          const forecast = office.months.filter(m => !m.isActual).slice(0, 3) // 予測：次3ヶ月
+
+          // 最新実績月の達成条件詳細
+          const latest = actual[actual.length - 1]
+          const singleGap = latest ? Math.max(0, latest.singleThreshold - latest.dia) : null
+          const req3mGap  = latest ? Math.max(0, latest.req3m - latest.dia) : null
+
+          // 次月の見込み
+          const nextM = forecast[0]
 
           return (
-            <div key={office} className="px-5 py-4">
-              <div className="flex items-start gap-5 flex-wrap">
+            <div key={office.office} className="px-5 py-4">
+              <div className="flex items-start gap-6 flex-wrap">
 
                 {/* 事務所名 */}
-                <div className="w-24 shrink-0 pt-1">
-                  <div className="text-sm font-bold text-gray-700">{office}</div>
+                <div className="w-20 shrink-0 pt-1">
+                  <div className="text-sm font-bold text-gray-700">{office.office}</div>
                 </div>
 
                 {/* 実績バッジ */}
-                <div className="flex-1 min-w-[200px]">
-                  <div className="text-[10px] text-gray-400 mb-1.5">実績（直近{hist.length}ヶ月）</div>
-                  <div className="flex flex-wrap gap-2">
-                    {hist.map(h => (
-                      <div key={h.month} className="text-center">
-                        <div className="text-[9px] text-gray-400 mb-0.5">{fmtM(h.month)}</div>
-                        <span className={judgeCls(h.judge)}>{h.judge}</span>
+                <div className="shrink-0">
+                  <div className="text-[9px] text-gray-400 mb-1.5 font-medium tracking-wide">― 実績 ―</div>
+                  <div className="flex gap-2">
+                    {actual.map(m => (
+                      <div key={m.month} className="text-center">
+                        <div className="text-[9px] text-gray-400 mb-0.5">{fmtM(m.month)}</div>
+                        <span className={judgeCls(m.judge)}>{m.judge || '—'}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 今月見込み */}
-                {prog ? (
-                  <div className="w-24 shrink-0 text-center">
-                    <div className="text-[10px] text-gray-400 mb-1">{fmtM(prog.month)} 見込み</div>
-                    <span className={judgeCls(prog.forecastJudge, true)}>
-                      {prog.forecastJudge}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="w-24 shrink-0 text-center">
-                    <div className="text-[10px] text-gray-400 mb-1">今月見込み</div>
-                    <span className="text-xs text-gray-300">日次データなし</span>
-                  </div>
-                )}
+                {/* 区切り */}
+                <div className="self-stretch border-l border-gray-200 shrink-0" />
 
-                {/* 3ヶ月基準プログレス */}
-                {prog && pct !== null && prog.req3m > 0 && (
-                  <div className="w-52 shrink-0">
-                    <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                      <span>3ヶ月基準 達成率</span>
-                      <span className={pct >= 100 ? 'text-green-600 font-bold' : 'text-gray-500'}>
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="bg-gray-100 rounded-full h-2 mb-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${
-                          pct >= 100 ? 'bg-green-400' : pct >= 80 ? 'bg-yellow-400' : 'bg-red-400'
-                        }`}
-                        style={{ width: `${Math.min(100, pct)}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-gray-500 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>月末予測</span>
-                        <span className="font-mono font-semibold text-gray-700">
-                          {fmtDia(prog.forecast)} dia
-                        </span>
+                {/* 予測バッジ */}
+                <div className="shrink-0">
+                  <div className="text-[9px] text-gray-400 mb-1.5 font-medium tracking-wide">― このまま行くと ―</div>
+                  <div className="flex gap-2">
+                    {forecast.map(m => (
+                      <div key={m.month} className="text-center">
+                        <div className="text-[9px] text-gray-400 mb-0.5">{fmtM(m.month)}(予)</div>
+                        <span className={judgeCls(m.judge, true)}>{m.judge || '—'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>◎達成に必要</span>
-                        <span className="font-mono font-semibold text-gray-700">
-                          {fmtDia(prog.req3m)} dia
-                        </span>
+                    ))}
+                    {forecast.length === 0 && (
+                      <span className="text-xs text-gray-300 self-center">予測データなし</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 最新月の達成条件 */}
+                {latest && (latest.singleThreshold > 0 || latest.req3m > 0) && (
+                  <>
+                    <div className="self-stretch border-l border-gray-200 shrink-0" />
+                    <div className="shrink-0 text-[10px] text-gray-500 space-y-1 pt-0.5">
+                      <div className="text-[9px] text-gray-400 font-medium tracking-wide mb-1.5">
+                        ― {fmtM(latest.month)} 実績 ◎条件 ―
                       </div>
-                      {gap !== null && gap > 0 ? (
-                        <div className="text-orange-600 font-semibold pt-0.5">
-                          あと {fmtDia(gap)} dia で◎
+                      {/* 単月基準 */}
+                      {latest.singleThreshold > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-20 shrink-0">単月基準</span>
+                          <span className="font-mono text-gray-700">{fmtDia(latest.singleThreshold)} dia</span>
+                          {singleGap === 0 ? (
+                            <span className="text-green-600 font-semibold">✓ 達成</span>
+                          ) : (
+                            <span className="text-orange-500">あと {fmtDia(singleGap!)} dia</span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="text-green-600 font-semibold pt-0.5">
-                          ◎ 達成見込み ✓
+                      )}
+                      {/* 3ヶ月基準 */}
+                      {latest.req3m > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-20 shrink-0">3ヶ月基準</span>
+                          <span className="font-mono text-gray-700">{fmtDia(latest.req3m)} dia</span>
+                          {req3mGap === 0 ? (
+                            <span className="text-green-600 font-semibold">✓ 達成</span>
+                          ) : (
+                            <span className="text-orange-500">あと {fmtDia(req3mGap!)} dia</span>
+                          )}
+                        </div>
+                      )}
+                      {/* 最低ライン */}
+                      {latest.minDia > 0 && latest.dia < latest.minDia && (
+                        <div className="text-red-600 font-semibold text-[9px] pt-0.5">
+                          ⚠️ 最低ライン（{fmtDia(latest.minDia)} dia）割れ
                         </div>
                       )}
                     </div>
-                  </div>
+                  </>
                 )}
 
               </div>
@@ -214,7 +201,7 @@ function GrowthBonusSection({
       </div>
 
       <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400">
-        実績 = M_月次ボーナス入力値　／　今月見込み・達成率 = RAW_日次の累積ダイヤから推計（毎日更新）
+        実績 = RAW_ライバー月次より集計（全ライバー対象）　／　予測 = 直近3ヶ月平均で自動推計　／　判定は DB_成長予測 シートの数式値
       </div>
     </div>
   )
@@ -390,7 +377,7 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
       )}
 
       {/* 成長ボーナス判定 */}
-      {data.growthBonus && data.growthBonus.history.length > 0 && (
+      {data.growthBonus && data.growthBonus.offices.length > 0 && (
         <>
           <SectionLabel>成長ボーナス</SectionLabel>
           <GrowthBonusSection gb={data.growthBonus} />

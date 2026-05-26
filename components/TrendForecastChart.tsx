@@ -39,9 +39,16 @@ export default function TrendForecastChart({
     map[p.month] = { ...map[p.month], month: p.month, fc: p.value }
   })
   if (plan) {
-    plan.forEach(p => {
-      map[p.month] = { ...map[p.month], month: p.month, pl: p.value }
-    })
+    // 計画値は actual の最初の月 〜 forecast の最後の月 の範囲にフィルタ
+    const firstM = actual[0]?.month
+    const lastM  = forecast.length > 0
+      ? forecast.slice(-1)[0].month
+      : actual.slice(-1)[0]?.month
+    plan
+      .filter(p => firstM && lastM && p.month >= firstM && p.month <= lastM)
+      .forEach(p => {
+        map[p.month] = { ...map[p.month], month: p.month, pl: p.value }
+      })
   }
 
   const chartData = Object.values(map).sort((a, b) => a.month < b.month ? -1 : 1)

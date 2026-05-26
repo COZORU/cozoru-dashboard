@@ -25,7 +25,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-56 bg-[#1a1a2e] flex flex-col z-50">
       <div className="px-6 py-6 border-b border-white/10">
         <div className="text-white font-bold text-xl">cozoru</div>
-        <div className="text-white/40 text-xs mt-1">経営ダッシュボード</div>
+        <div className="text-white/40 text-xs mt-1">グループ経営ダッシュボード</div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {NAV.map(({ href, label, icon: Icon }) => {

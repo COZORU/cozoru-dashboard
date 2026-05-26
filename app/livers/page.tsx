@@ -124,8 +124,14 @@ function TierRankMatrix({ livers }: { livers: Liver[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-gray-800">Tier × ランク分布</h2>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-sm font-bold text-gray-800">Tier × ランク分布</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Tier=月間応援ダイヤ量（売上貢献度）、ランク=配信実力・知名度。
+            T1内のS/A帯比率が高いほど収益の質が高く、T2のA/B帯が厚いほど次世代T1の育成パイプラインが健全。
+          </p>
+        </div>
         <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-4 py-1.5">
           <span className="text-xs text-gray-500">T1内Sランク比率</span>
           <span className="text-xl font-bold text-red-700 leading-none">{sRatio}%</span>
@@ -180,10 +186,16 @@ function TopT1Focus({ livers, latestMonth }: { livers: Liver[]; latestMonth: str
   if (!top.length) return null
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-      <h2 className="text-sm font-bold text-gray-800 mb-3">
-        上位T1フォーカス
-        <span className="ml-2 text-xs font-normal text-gray-400">上位20% / {top.length}人</span>
-      </h2>
+      <div className="mb-3">
+        <h2 className="text-sm font-bold text-gray-800">
+          上位T1フォーカス
+          <span className="ml-2 text-xs font-normal text-gray-400">上位20% / {top.length}人</span>
+        </h2>
+        <p className="text-xs text-gray-400 mt-0.5">
+          売上の大部分を占める最重要ライバー層。離脱・ダイヤ減少が全社売上に直結するため個別監視が必要。
+          🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
+        </p>
+      </div>
       <div className="flex flex-wrap gap-2.5">
         {top.map(l => {
           const band = getRankBand(l.rank)

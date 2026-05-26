@@ -283,17 +283,20 @@ function MiniRow({ label, value }: { label: string; value: number }) {
   )
 }
 
-function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
+function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth, overrideRevTaxIn, isLatestMonth }: {
   off: Record<string, SectionSnap>
   allOffices: string[]
   pctRevenue: number | null
   latestMonth: string
+  overrideRevTaxIn?: number
+  isLatestMonth: boolean
 }) {
   const [expanded, setExpanded]     = useState(false)
   const [openOffice, setOpenOffice] = useState<string | null>(null)
   const [cpnOpenMap, setCpnOpenMap] = useState<Record<string, boolean>>({})
 
   const totalSnap  = off['全社合計'] ?? null
+  const displayRev = overrideRevTaxIn ?? totalSnap?.revTaxIn ?? 0
   const totalRev   = totalSnap?.revTaxIn ?? 0
   const officeKeys = allOffices.filter(o => o !== '全社合計' && off[o])
 
@@ -308,7 +311,7 @@ function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
           <div className="text-left">
             <div className="text-[10px] font-semibold text-blue-500 uppercase tracking-widest mb-0.5">売上（税込）</div>
             <div className="text-3xl font-black text-gray-900 tracking-tight tabular-nums">
-              {totalSnap ? fmtYen(totalSnap.revTaxIn) : '—'}
+              {fmtYen(displayRev)}
             </div>
           </div>
           {pctRevenue !== null && pctRevenue !== undefined && (
@@ -323,13 +326,15 @@ function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
         <div className={`flex items-center gap-2 text-xs font-medium transition-colors
           ${expanded ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'}`}>
           <span className="text-gray-300">{latestMonth}</span>
-          <span className={`text-sm transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▼</span>
-          <span>個社別</span>
+          {isLatestMonth
+            ? <><span className={`text-sm transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▼</span><span>個社別</span></>
+            : <span className="text-gray-300 text-[10px]">個社別は最新月のみ</span>
+          }
         </div>
       </button>
 
       {/* ── Level 1: 事務所ブレークダウン ── */}
-      {expanded && (
+      {expanded && isLatestMonth && (
         <div className="border-t border-gray-100">
           {officeKeys.map(office => {
             const s        = off[office]
@@ -440,12 +445,13 @@ function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
 }
 
 // ─── ライバー 階層展開コンポーネント ────────────────────────────────
-function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGlobal }: {
+function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGlobal, isLatestMonth }: {
   cur: SectionSnap
   off: Record<string, SectionSnap>
   allOffices: string[]
   pctDia: number | null; pctLeveshe: number | null; pctDebut: number | null
   isGlobal: boolean
+  isLatestMonth: boolean
 }) {
   const [open, setOpen]           = useState(false)
   const [view, setView]           = useState<'total' | 'office'>('total')
@@ -504,13 +510,15 @@ function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGl
         </div>
         <div className={`flex items-center gap-2 text-xs font-medium transition-colors
           ${open ? 'text-emerald-500' : 'text-gray-400 group-hover:text-emerald-500'}`}>
-          <span className={`text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
-          <span>ライバー基盤</span>
+          {isLatestMonth
+            ? <><span className={`text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span><span>ライバー基盤</span></>
+            : <span className="text-gray-300 text-[10px]">詳細は最新月のみ</span>
+          }
         </div>
       </button>
 
       {/* 展開エリア */}
-      {open && (
+      {open && isLatestMonth && (
         <div className="border-t border-gray-100">
           {/* 全社 / 個社別 切替タブ */}
           <div className="flex border-b border-gray-100 px-6 pt-4 gap-1">
@@ -637,15 +645,51 @@ function LiverSection({ cur, off, allOffices, pctDia, pctLeveshe, pctDebut, isGl
 
 // ─── メインコンポーネント ─────────────────────────────────────────────
 export default function FinanceDashboardClient({ data }: { data: SummaryData }) {
-  const off            = data.officeSummary || {}
+  const off              = data.officeSummary || {}
   const availableOffices = OFFICE_ORDER.filter(o => off[o] && off[o].revTaxIn > 0)
-  const allOffices     = OFFICE_ORDER.filter(o => off[o])
+  const allOffices       = OFFICE_ORDER.filter(o => off[o])
+
+  // 月選択・事務所選択
+  const [selectedMonth,  setSelectedMonth]  = useState<string | null>(null)
   const [selectedOffice, setSelectedOffice] = useState('全社合計')
 
-  const isGlobal = selectedOffice === '全社合計'
-  const cur      = (off[selectedOffice] || data.current || {}) as SectionSnap
+  const trend          = data.trend || []
+  const effectiveMonth = selectedMonth ?? data.latestMonth
+  const isLatestMonth  = effectiveMonth === data.latestMonth
 
-  const trend       = data.trend || []
+  // 選択月のトレンドデータ
+  const trendIdx  = trend.findIndex(t => t.month === effectiveMonth)
+  const trendItem = trendIdx >= 0 ? trend[trendIdx] : null
+  const prevItem  = trendIdx > 0  ? trend[trendIdx - 1] : null
+
+  // 前月比を計算（選択月 vs 前月）
+  function calcPct(cur: number, prev: number | undefined): number | null {
+    if (!prev || prev === 0) return null
+    return ((cur - prev) / prev) * 100
+  }
+  const displayPctRev = isLatestMonth
+    ? data.pctRevenue
+    : (trendItem && prevItem ? calcPct(trendItem.revTaxIn, prevItem.revTaxIn) : null)
+  const displayPctDia = isLatestMonth
+    ? data.pctDia
+    : (trendItem && prevItem ? calcPct(trendItem.dia, prevItem.dia) : null)
+  const displayPctDebut = isLatestMonth
+    ? data.pctDebut
+    : (trendItem && prevItem ? calcPct(trendItem.debut, prevItem.debut) : null)
+
+  // 表示用スナップ（過去月はtrendのみ、最新月は officeSummary）
+  const isGlobal = selectedOffice === '全社合計'
+  const latestCur = (off[selectedOffice] || data.current || {}) as SectionSnap
+  const historicalSnap: SectionSnap = {
+    revTaxIn: trendItem?.revTaxIn ?? 0, revTaxEx: 0,
+    dia: trendItem?.dia ?? 0, mf: 0,
+    cpnC5: 0, cpnB2: 0, cpnA: 0, cpnS: 0, cpnOther: 0,
+    leveshe: 0, registered: 0, active: trendItem?.active ?? 0,
+    t1: 0, t2: 0, t3: 0, debut: trendItem?.debut ?? 0, c5Count: 0,
+  }
+  const cur = isLatestMonth ? latestCur : historicalSnap
+
+  // チャート用データ（全期間）
   const revActual   = trend.map(t => ({ month: t.month, value: t.revTaxIn }))
   const revForecast = (data.revForecast   || []).map(f => ({ month: f.month, value: f.revTaxIn }))
   const diaActual   = trend.map(t => ({ month: t.month, value: t.dia }))
@@ -655,23 +699,74 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
   const debActual   = trend.map(t => ({ month: t.month, value: t.debut }))
   const debForecast = (data.debutForecast || []).map(f => ({ month: f.month, value: f.debut }))
 
+  // 月ラベル "2026-04" → "4月"
+  function fmtM(ym: string) { return ym.substring(5).replace(/^0/, '') + '月' }
+
+  // 月選択リスト（古い順）
+  const monthOptions = trend.map(t => t.month)
+
   return (
     <>
-      {/* 個社別セレクター */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        {(['全社合計', ...availableOffices.filter(o => o !== '全社合計')]).map(office => (
-          <button
-            key={office}
-            onClick={() => setSelectedOffice(office)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-              selectedOffice === office
-                ? 'bg-[#1565c0] text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:border-[#1565c0] hover:text-[#1565c0]'
-            }`}
-          >
-            {OFFICE_LABEL[office] || office}
-          </button>
-        ))}
+      {/* ── コントロールバー ─────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 px-5 py-4">
+        {/* 月選択 */}
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider w-8 shrink-0">月</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {/* 最新ボタン */}
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition ${
+                isLatestMonth
+                  ? 'bg-[#1565c0] text-white'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              最新（{fmtM(data.latestMonth)}）
+            </button>
+            {/* 過去月（新しい順） */}
+            {[...monthOptions].reverse().filter(m => m !== data.latestMonth).map(m => (
+              <button
+                key={m}
+                onClick={() => setSelectedMonth(m)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition ${
+                  selectedMonth === m
+                    ? 'bg-blue-100 text-blue-700 font-semibold ring-1 ring-blue-300'
+                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {fmtM(m)}
+              </button>
+            ))}
+          </div>
+          {!isLatestMonth && (
+            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded-lg font-semibold shrink-0">
+              過去データ表示中（詳細・個社別は最新月のみ）
+            </span>
+          )}
+        </div>
+
+        {/* 事務所選択（最新月のみ有効） */}
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider w-8 shrink-0">事務所</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(['全社合計', ...availableOffices.filter(o => o !== '全社合計')]).map(office => (
+              <button
+                key={office}
+                onClick={() => { if (isLatestMonth) setSelectedOffice(office) }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                  !isLatestMonth
+                    ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                    : selectedOffice === office
+                      ? 'bg-[#1565c0] text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {OFFICE_LABEL[office] || office}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* チャート */}
@@ -697,90 +792,29 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </>
       )}
 
-      {/* 売上 階層展開 */}
+      {/* 売上 */}
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>
       <RevenueHierarchy
         off={off}
         allOffices={allOffices}
-        pctRevenue={isGlobal ? data.pctRevenue : null}
-        latestMonth={data.latestMonth}
+        pctRevenue={isGlobal ? displayPctRev : null}
+        latestMonth={effectiveMonth}
+        overrideRevTaxIn={!isLatestMonth ? (trendItem?.revTaxIn ?? 0) : undefined}
+        isLatestMonth={isLatestMonth}
       />
 
-      {/* ライバー 階層展開 */}
+      {/* ライバー */}
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-6">ライバー</p>
       <LiverSection
         cur={cur}
         off={off}
         allOffices={allOffices}
-        pctDia={isGlobal ? data.pctDia : null}
-        pctLeveshe={isGlobal ? data.pctLeveshe : null}
-        pctDebut={isGlobal ? data.pctDebut : null}
+        pctDia={isGlobal ? displayPctDia : null}
+        pctLeveshe={isGlobal ? (isLatestMonth ? data.pctLeveshe : null) : null}
+        pctDebut={isGlobal ? displayPctDebut : null}
         isGlobal={isGlobal}
+        isLatestMonth={isLatestMonth}
       />
-
-      {/* 個社別サマリ比較表 */}
-      {allOffices.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-x-auto">
-          <div className="bg-slate-50 px-5 py-3 border-b border-slate-100">
-            <h2 className="text-slate-700 font-bold text-sm">個社別サマリ（{data.latestMonth}）</h2>
-          </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <th className="px-4 py-2 text-left font-medium w-28">事務所</th>
-                <th className="px-3 py-2 text-right font-medium">売上（税込）</th>
-                <th className="px-3 py-2 text-right font-medium">売上（税抜）</th>
-                <th className="px-3 py-2 text-right font-medium">応援ダイヤ</th>
-                <th className="px-3 py-2 text-right font-medium">投げ銭MF</th>
-                <th className="px-3 py-2 text-right font-medium">CPN合計</th>
-                <th className="px-3 py-2 text-right font-medium">レベシェ</th>
-                <th className="px-3 py-2 text-right font-medium">登録</th>
-                <th className="px-3 py-2 text-right font-medium">Act</th>
-                <th className="px-3 py-2 text-right font-medium">T1</th>
-                <th className="px-3 py-2 text-right font-medium">T2</th>
-                <th className="px-3 py-2 text-right font-medium">T3</th>
-                <th className="px-3 py-2 text-right font-medium">デビュー</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allOffices.map(office => {
-                const s = off[office]
-                if (!s) return null
-                const isTotal    = office === '全社合計'
-                const isSelected = office === selectedOffice
-                const cpn = (s.cpnC5||0)+(s.cpnB2||0)+(s.cpnA||0)+(s.cpnS||0)+(s.cpnOther||0)
-                return (
-                  <tr
-                    key={office}
-                    onClick={() => setSelectedOffice(office)}
-                    className={`border-b border-gray-50 cursor-pointer transition ${
-                      isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' :
-                      isTotal    ? 'bg-slate-50 hover:bg-blue-50' :
-                                   'bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <td className={`px-4 py-2.5 font-medium ${isTotal ? 'text-blue-900' : isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
-                      {OFFICE_LABEL[office] || office}
-                    </td>
-                    <td className={`px-3 py-2.5 text-right font-mono ${isTotal ? 'text-blue-900 font-bold' : 'text-gray-700'}`}>{fmtYen(s.revTaxIn)}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-600">{fmtYen(s.revTaxEx)}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-600">{fmtDia(s.dia)}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-600">{fmtYen(s.mf)}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-600">{cpn ? fmtYen(cpn) : '—'}</td>
-                    <td className="px-3 py-2.5 text-right font-mono text-gray-600">{fmtYen(s.leveshe)}</td>
-                    <td className="px-3 py-2.5 text-right text-gray-600">{s.registered}</td>
-                    <td className="px-3 py-2.5 text-right text-gray-600">{s.active}</td>
-                    <td className="px-3 py-2.5 text-right"><span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">{s.t1}</span></td>
-                    <td className="px-3 py-2.5 text-right"><span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded">{s.t2}</span></td>
-                    <td className="px-3 py-2.5 text-right"><span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">{s.t3}</span></td>
-                    <td className="px-3 py-2.5 text-right text-gray-600">{s.debut}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </>
   )
 }

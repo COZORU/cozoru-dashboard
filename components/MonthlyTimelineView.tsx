@@ -12,6 +12,7 @@ type MonthSnap = {
   expTotal: number; expKaito: number; expUnyo: number; expMk: number
   expCreative: number; expDesign: number; expMgmt: number; expCorp: number; expOther: number
   profit: number
+  cfOps?: number; bankEst?: number; bankAct?: number
   _filledFields?: string[]
 }
 
@@ -195,6 +196,10 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
     {                          label: 'その他',         accessor: m => m.expOther,    format: fmtYen, indent: true, info: 'PL(全社) 237行目' },
     {                          label: '経費合計',       accessor: m => m.expTotal,    format: fmtYen, info: 'PL(全社) 138行目（全月入力済み）' },
     { section: '事業利益',     label: '事業利益', accessor: m => m.profit, format: fmtYen, info: 'PL(全社) 270行目／売上補完時は (補完売上 − 経費合計) で再計算', filledKey: 'profit' },
+
+    { section: 'キャッシュ',   label: '現金増減額（営業CF）', accessor: m => m.cfOps    ?? 0, format: fmtYen, info: 'PL(全社) 339行目（営業活動によるキャッシュフロー）' },
+    {                          label: '想定の預金残高',       accessor: m => m.bankEst  ?? 0, format: fmtYen, info: 'PL(全社) 340行目（前月実残＋営業CFで予測した翌月末想定残高）' },
+    {                          label: '実際の預金残高',       accessor: m => m.bankAct  ?? 0, format: fmtYen, info: 'PL(全社) 341行目（毎月10日時点の通帳実残）／予測月は空欄' },
   ]
 
   return (

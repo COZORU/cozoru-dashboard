@@ -162,13 +162,26 @@ const STANDALONE_ROWS: RowDef[] = [
 // ─── 本体 ────────────────────────────────────────────────────
 type Props = { latestMonth: string }
 
-// 事務所別売上ドリルダウン用
-type OfficeMonthly = Record<string, Record<string, number>>  // month -> office -> revTaxEx
+// 事務所別ドリルダウン用（3次元: month → office → key → value）
+type OfficeMonthly = Record<string, Record<string, Record<string, number>>>
 const DRILLDOWN_OFFICES = ['cozoru:全社', 'ライブナウV', 'Tolance:全社']
 const OFFICE_SHORT_LABEL: Record<string, string> = {
   'cozoru:全社':  'cozoru',
   'ライブナウV':   'ライブナウV',
   'Tolance:全社': 'Tolance',
+}
+// actualKey と PL(個社別) 取得キーのマッピング（事務所別取得可能な指標のみ）
+const ACTUAL_TO_OFFICE_KEY: Record<string, string> = {
+  revTaxEx:   'revTaxEx',
+  dia:        'dia',
+  mf:         'mf',
+  cpnC5:      'cpnC5',
+  cpnA:       'cpnA',
+  cpnS:       'cpnS',
+  leveshe:    'leveshe',
+  registered: 'registered',
+  active:     'active',
+  debut:      'debut',
 }
 
 export default function MonthlyTimelineView({ latestMonth }: Props) {
@@ -178,6 +191,7 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [expandedOffices, setExpandedOffices] = useState<Record<string, boolean>>({})
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const [expandedChildren, setExpandedChildren] = useState<Record<string, boolean>>({})
   const [showPlan,   setShowPlan]   = useState(true)
   const [showActual, setShowActual] = useState(true)
   const [showRate,   setShowRate]   = useState(true)
@@ -187,6 +201,9 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   }
   function toggleSection(title: string) {
     setExpandedSections(prev => ({ ...prev, [title]: !prev[title] }))
+  }
+  function toggleChild(key: string) {
+    setExpandedChildren(prev => ({ ...prev, [key]: !prev[key] }))
   }
   function fmtDiaLocal(v: number) {
     if (!v) return '—'
@@ -315,25 +332,51 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
     )
   }
 
-  // 実績値行
+  // 実績値行（子項目の場合はクリックで事務所別ドリルダウン）
   function renderActualRow(row: RowDef, key: string, isChild: boolean) {
+    const officeKey = ACTUAL_TO_OFFICE_KEY[row.actualKey as string]
+    const drillable = isChild && !!officeKey
+    const isChildExpanded = drillable && !!expandedChildren[key]
+
     return (
-      <div key={key} className="grid border-t border-gray-50 hover:bg-gray-50/30" style={gridStyle}>
-        <div className={`px-4 py-2 flex items-center text-xs ${isChild ? 'pl-10 text-gray-500' : 'font-semibold text-gray-700'}`}>
-          {row.label}
-          <InfoIcon desc={row.info} />
+      <>
+        <div key={key} className={`grid border-t border-gray-50 hover:bg-gray-50/30 ${drillable ? 'cursor-pointer' : ''}`}
+             style={gridStyle}
+             onClick={() => drillable && toggleChild(key)}>
+          <div className={`px-4 py-2 flex items-center text-xs ${isChild ? 'pl-10 text-gray-500' : 'font-semibold text-gray-700'}`}>
+            {drillable && (
+              <span className={`text-[10px] mr-1.5 transition-transform inline-block ${isChildExpanded ? 'rotate-90' : ''} text-gray-400`}>▶</span>
+            )}
+            {row.label}
+            <InfoIcon desc={row.info} />
+          </div>
+          {displayMonths.map(m => {
+            const v = m[row.actualKey] as number
+            const isFilled = !!(row.filledKey && m._filledFields?.includes(row.filledKey))
+            return (
+              <div key={m.month} className={`px-2 py-2 text-right tabular-nums whitespace-nowrap text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
+                {row.format(v)}
+                {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="DB_成長予測から補完">★</span>}
+              </div>
+            )
+          })}
         </div>
-        {displayMonths.map(m => {
-          const v = m[row.actualKey] as number
-          const isFilled = !!(row.filledKey && m._filledFields?.includes(row.filledKey))
-          return (
-            <div key={m.month} className={`px-2 py-2 text-right tabular-nums whitespace-nowrap text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
-              {row.format(v)}
-              {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="DB_成長予測から補完">★</span>}
-            </div>
-          )
-        })}
-      </div>
+
+        {/* 子項目展開時：事務所別ドリルダウン */}
+        {isChildExpanded && officeKey && DRILLDOWN_OFFICES.map(office => (
+          <div key={`${key}-${office}`} className="grid border-t border-gray-50 bg-blue-50/20 hover:bg-blue-50/40" style={gridStyle}>
+            <div className="px-4 py-1.5 pl-14 text-[10px] text-gray-500">┣ {OFFICE_SHORT_LABEL[office] || office}</div>
+            {displayMonths.map(m => {
+              const v = officeMonthly[m.month]?.[office]?.[officeKey]
+              return (
+                <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[10px] border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
+                  {v === undefined || v === null ? '—' : row.format(v)}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </>
     )
   }
 
@@ -439,7 +482,7 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                   <div key={`office-${office}`} className="grid border-t border-gray-50 hover:bg-gray-50/30" style={gridStyle}>
                     <div className="px-4 py-1.5 pl-12 text-[11px] text-gray-500">┣ {label}</div>
                     {displayMonths.map(m => {
-                      const v = officeMonthly[m.month]?.[office]
+                      const v = officeMonthly[m.month]?.[office]?.revTaxEx
                       return (
                         <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[11px] border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
                           {v === undefined || v === null ? '—' : v === 0 ? '¥0' : `¥${Math.round(v / 10000).toLocaleString()}万`}

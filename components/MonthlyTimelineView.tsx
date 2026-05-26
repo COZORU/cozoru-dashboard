@@ -464,36 +464,6 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
             return renderRateRow(child, `${mode}-${section.title}-${ci}`, true, reverse)
           })}
 
-          {/* 売上セクション展開時：事務所別ドリルダウン（実績のみ、計画は事務所別がないため省略） */}
-          {expanded && section.title === '売上' && mode === 'actual' && Object.keys(officeMonthly).length > 0 && (
-            <>
-              <div className="grid border-t border-gray-100 bg-blue-50/30" style={gridStyle}>
-                <div className="px-4 py-1.5 pl-10 text-[10px] text-blue-600 font-semibold uppercase tracking-wider">
-                  事務所別売上（税抜）
-                  <InfoIcon desc="PL(個社別) シートから各事務所の税抜売上を月別取得" />
-                </div>
-                {displayMonths.map(m => (
-                  <div key={m.month} className={`px-2 py-1.5 border-l border-gray-100 ${monthBg(m)}`} />
-                ))}
-              </div>
-              {DRILLDOWN_OFFICES.map(office => {
-                const label = OFFICE_SHORT_LABEL[office] || office
-                return (
-                  <div key={`office-${office}`} className="grid border-t border-gray-50 hover:bg-gray-50/30" style={gridStyle}>
-                    <div className="px-4 py-1.5 pl-12 text-[11px] text-gray-500">┣ {label}</div>
-                    {displayMonths.map(m => {
-                      const v = officeMonthly[m.month]?.[office]?.revTaxEx
-                      return (
-                        <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[11px] border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
-                          {v === undefined || v === null ? '—' : v === 0 ? '¥0' : `¥${Math.round(v / 10000).toLocaleString()}万`}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </>
-          )}
         </div>
       )
     })

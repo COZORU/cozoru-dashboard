@@ -25,6 +25,7 @@ export type SummaryData = {
   pctMf: number | null; pctCpnTotal: number | null
   pctLeveshe: number | null; pctDia: number | null; pctDebut: number | null
   trend: TrendItem[]
+  revPlan: { month: string; revTaxEx: number }[]
   revForecast: { month: string; revTaxIn: number }[]
   diaForecast: { month: string; dia: number }[]
   activeForecast: { month: string; active: number }[]
@@ -691,6 +692,7 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
 
   // チャート用データ（全期間）
   const revActual   = trend.map(t => ({ month: t.month, value: t.revTaxIn }))
+  const revPlan     = (data.revPlan      || []).map(p => ({ month: p.month, value: p.revTaxEx }))
   const revForecast = (data.revForecast   || []).map(f => ({ month: f.month, value: f.revTaxIn }))
   const diaActual   = trend.map(t => ({ month: t.month, value: t.dia }))
   const diaForecast = (data.diaForecast   || []).map(f => ({ month: f.month, value: f.dia }))
@@ -777,7 +779,7 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
           </p>
           <div style={{ maxWidth: '600px' }}>
             <ChartSection
-              revActual={revActual} revForecast={revForecast}
+              revActual={revActual} revPlan={revPlan} revForecast={revForecast}
             />
           </div>
         </div>

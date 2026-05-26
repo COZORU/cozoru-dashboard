@@ -7,12 +7,14 @@ import {
 
 type ActualItem   = { month: string; value: number }
 type ForecastItem = { month: string; value: number }
+type PlanItem     = { month: string; value: number }
 
 type Props = {
   title: string
   color: string
   actual: ActualItem[]
   forecast: ForecastItem[]
+  plan?: PlanItem[]
   fmt?: (v: number) => string
   height?: number
   info?: ReactNode
@@ -21,9 +23,9 @@ type Props = {
 const defaultFmt = (v: number) => v.toLocaleString()
 
 export default function TrendForecastChart({
-  title, color, actual, forecast, fmt = defaultFmt, height = 200, info
+  title, color, actual, forecast, plan, fmt = defaultFmt, height = 200, info
 }: Props) {
-  type Point = { month: string; act?: number; fc?: number }
+  type Point = { month: string; act?: number; fc?: number; pl?: number }
   const map: Record<string, Point> = {}
 
   actual.forEach(p => {
@@ -36,6 +38,11 @@ export default function TrendForecastChart({
   forecast.forEach(p => {
     map[p.month] = { ...map[p.month], month: p.month, fc: p.value }
   })
+  if (plan) {
+    plan.forEach(p => {
+      map[p.month] = { ...map[p.month], month: p.month, pl: p.value }
+    })
+  }
 
   const chartData = Object.values(map).sort((a, b) => a.month < b.month ? -1 : 1)
   const latestM = lastActual?.month
@@ -55,15 +62,22 @@ export default function TrendForecastChart({
             </div>
           </div>
         )}
-        {forecast.length > 0 && (
+        {(forecast.length > 0 || plan) && (
           <span className="flex items-center gap-3 text-xs text-gray-400 ml-auto">
             <span className="flex items-center gap-1">
               <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke={color} strokeWidth="2"/></svg>実績
             </span>
-            <span className="flex items-center gap-1">
-              <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke={color} strokeWidth="2" strokeDasharray="5 3"/></svg>予測
-              <span className="text-blue-400">(DB_成長予測)</span>
-            </span>
+            {plan && (
+              <span className="flex items-center gap-1">
+                <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="#999999" strokeWidth="2"/></svg>計画
+              </span>
+            )}
+            {forecast.length > 0 && (
+              <span className="flex items-center gap-1">
+                <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke={color} strokeWidth="2" strokeDasharray="5 3"/></svg>予測
+                <span className="text-blue-400">(DB_成長予測)</span>
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -78,7 +92,9 @@ export default function TrendForecastChart({
           <Tooltip
             formatter={(v, key) => {
               if (v == null || typeof v !== 'number') return [null, key]
-              const label = key === 'fc' ? '予測（DB_成長予測）' : '実績'
+              let label = '実績'
+              if (key === 'pl') label = '計画'
+              else if (key === 'fc') label = '予測（DB_成長予測）'
               return [fmt(v), label]
             }}
           />
@@ -93,6 +109,13 @@ export default function TrendForecastChart({
             stroke={color} strokeWidth={2.5}
             dot={{ r: 2.5 }} connectNulls={false}
           />
+          {plan && (
+            <Line
+              type="monotone" dataKey="pl" name="計画"
+              stroke="#999999" strokeWidth={2}
+              dot={{ r: 2 }} connectNulls={false}
+            />
+          )}
           {forecast.length > 0 && (
             <Line
               type="monotone" dataKey="fc" name="予測"

@@ -6,7 +6,7 @@ const TrendForecastChart = dynamic(() => import('./TrendForecastChart'), { ssr: 
 type DataPoint = { month: string; value: number }
 
 type Props = {
-  revActual?: DataPoint[]; revForecast?: DataPoint[]
+  revActual?: DataPoint[]; revPlan?: DataPoint[]; revForecast?: DataPoint[]
   diaActual?: DataPoint[]; diaForecast?: DataPoint[]
   actActual?: DataPoint[]; actForecast?: DataPoint[]
   debActual?: DataPoint[]; debForecast?: DataPoint[]
@@ -61,6 +61,7 @@ export default function ChartSection({
           title="売上（税込・全社）"
           color="#1565c0"
           actual={revActual}
+          plan={revPlan}
           forecast={revForecast}
           fmt={v => v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`}
           height={200}

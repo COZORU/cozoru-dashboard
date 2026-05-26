@@ -487,6 +487,7 @@ export default function DebutPage() {
               <ChartSection
                 debActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.debut }))}
                 debForecast={(chartData.debutForecast || []).map(f => ({ month: f.month, value: f.debut }))}
+                c5Actual={(chartData.trend || []).map(t => ({ month: t.month, value: t.c5Count ?? 0 }))}
               />
             </div>
           )}

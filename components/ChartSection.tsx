@@ -10,6 +10,7 @@ type Props = {
   diaActual?: DataPoint[]; diaForecast?: DataPoint[]
   actActual?: DataPoint[]; actForecast?: DataPoint[]
   debActual?: DataPoint[]; debForecast?: DataPoint[]
+  c5Actual?: DataPoint[]; c5Forecast?: DataPoint[]
 }
 
 const InfoRev = (
@@ -48,11 +49,20 @@ const InfoDeb = (
   </div>
 )
 
+const InfoC5 = (
+  <div className="space-y-1.5">
+    <div><span className="font-semibold">実績:</span> C5報酬合計 ÷ ¥60,000（C5単価）で算出</div>
+    <div><span className="font-semibold">対象:</span> 30日50時間配信達成者</div>
+    <div className="text-[10px] text-gray-400 mt-1">C5達成 = デビュー後の成長フェーズ完了の重要KPI</div>
+  </div>
+)
+
 export default function ChartSection({
   revActual, revPlan, revForecast,
   diaActual, diaForecast,
   actActual, actForecast,
-  debActual, debForecast
+  debActual, debForecast,
+  c5Actual, c5Forecast
 }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -99,6 +109,17 @@ export default function ChartSection({
           fmt={v => `${v} 人`}
           height={200}
           info={InfoDeb}
+        />
+      )}
+      {c5Actual && c5Actual.length > 0 && (
+        <TrendForecastChart
+          title="C5達成数（全社）"
+          color="#d84315"
+          actual={c5Actual}
+          forecast={c5Forecast || []}
+          fmt={v => `${v} 人`}
+          height={200}
+          info={InfoC5}
         />
       )}
     </div>

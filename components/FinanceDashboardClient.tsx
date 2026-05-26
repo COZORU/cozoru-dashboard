@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import ChartSection from './ChartSection'
-import MonthlySummaryTable from './MonthlySummaryTable'
+import MonthlyTimelineView from './MonthlyTimelineView'
 
 export type SectionSnap = {
   revTaxIn: number; revTaxEx: number; dia: number; mf: number
@@ -772,35 +772,21 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </div>
       </div>
 
-      {/* チャート - 売上のみ大型表示 */}
-      {trend.length > 0 && (
-        <div className="mb-8">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-            売上トレンド ＆ 3ヶ月予測
-          </p>
-          <div style={{ maxWidth: '600px' }}>
-            <ChartSection
-              revActual={revActual} revPlan={revPlan} revForecast={revForecast}
-            />
-          </div>
-        </div>
-      )}
+      {/* 月別タイムライン: グラフ + 成長判定 + 数値が縦連動 */}
+      <div className="mb-8">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          月別タイムライン（売上トレンド × 成長判定 × 経営指標）
+        </p>
+        <MonthlyTimelineView latestMonth={data.latestMonth} />
+      </div>
 
-      {/* 成長ボーナス（売上グラフの直下、月別サマリの上） */}
+      {/* 成長ボーナス達成条件詳細（バッジは上で表示済み、ここはプログレスバー等の詳細） */}
       {data.growthBonus && data.growthBonus.offices.length > 0 && (
         <>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス</p>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス 達成条件</p>
           <GrowthBonusSection gb={data.growthBonus} />
         </>
       )}
-
-      {/* 月別サマリ（PL(全社)と連動） */}
-      <div className="mb-8">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          月別サマリ（計画／実績／予測 ・ 経費 ・ 事業利益）
-        </p>
-        <MonthlySummaryTable latestMonth={data.latestMonth} />
-      </div>
 
       {/* 売上 */}
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>

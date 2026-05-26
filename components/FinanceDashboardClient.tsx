@@ -780,14 +780,6 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         <MonthlyTimelineView latestMonth={data.latestMonth} />
       </div>
 
-      {/* 成長ボーナス達成条件詳細（バッジは上で表示済み、ここはプログレスバー等の詳細） */}
-      {data.growthBonus && data.growthBonus.offices.length > 0 && (
-        <>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス 達成条件</p>
-          <GrowthBonusSection gb={data.growthBonus} />
-        </>
-      )}
-
       {/* 売上 */}
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>
       <RevenueHierarchy

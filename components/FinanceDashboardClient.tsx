@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import KPICard from './KPICard'
 import ChartSection from './ChartSection'
 
 type SectionSnap = {
@@ -12,15 +11,11 @@ type SectionSnap = {
 
 type TrendItem = { month: string; revTaxIn: number; dia: number; active: number; debut: number }
 
-type ForecastItem = { month: string; value: number }
-
 type GrowthMonthItem = {
   month: string; judge: string; dia: number
   singleThreshold: number; req3m: number; minDia: number; isActual: boolean
 }
-type GrowthOfficeItem = {
-  office: string; months: GrowthMonthItem[]
-}
+type GrowthOfficeItem = { office: string; months: GrowthMonthItem[] }
 
 export type SummaryData = {
   latestMonth: string
@@ -34,9 +29,7 @@ export type SummaryData = {
   diaForecast: { month: string; dia: number }[]
   activeForecast: { month: string; active: number }[]
   debutForecast: { month: string; debut: number }[]
-  growthBonus?: {
-    offices: GrowthOfficeItem[]
-  }
+  growthBonus?: { offices: GrowthOfficeItem[] }
 }
 
 const OFFICE_ORDER = ['全社合計', 'cozoru:全社', 'cozoruレーベル', 'ライブナウV', 'Tolance:全社']
@@ -48,7 +41,6 @@ const OFFICE_LABEL: Record<string, string> = {
   'Tolance:全社': 'Tolance',
 }
 
-
 function fmtYen(v: number) {
   return v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`
 }
@@ -56,259 +48,503 @@ function fmtDia(v: number) {
   return v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// ─── 成長ボーナス判定バッジ ───────────────────────────────────────────
+function JudgeBadge({ judge, forecast = false }: { judge: string; forecast?: boolean }) {
+  const map: Record<string, string> = {
+    '◎': 'bg-emerald-500 text-white shadow-emerald-200',
+    '○': 'bg-amber-400 text-white shadow-amber-200',
+    '✖': 'bg-red-500 text-white shadow-red-200',
+  }
+  const base = map[judge] ?? 'bg-gray-100 text-gray-400'
   return (
-    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-6 first:mt-0">
-      {children}
-    </p>
+    <div className={`w-11 h-11 flex items-center justify-center rounded-xl text-lg font-black select-none
+      ${base} ${forecast ? 'opacity-40 ring-2 ring-dashed ring-gray-300' : 'shadow-md'}`}>
+      {judge || '—'}
+    </div>
   )
 }
 
-// 判定バッジのスタイル
-function judgeCls(j: string, forecast = false) {
-  const base = forecast
-    ? 'text-[11px] font-bold px-1.5 py-0.5 rounded-sm inline-block border-dashed border'
-    : 'text-[11px] font-bold px-1.5 py-0.5 rounded inline-block border'
-  if (j === '◎') return `${base} bg-green-100 text-green-800 border-green-300`
-  if (j === '✖') return `${base} bg-red-100 text-red-700 border-red-300`
-  if (j === '○') return `${base} bg-yellow-50 text-yellow-700 border-yellow-300`
-  return `${base} bg-gray-100 text-gray-400 border-gray-200`
-}
-
+// ─── 成長ボーナスセクション ──────────────────────────────────────────
 function GrowthBonusSection({ gb }: { gb: NonNullable<SummaryData['growthBonus']> }) {
-  const offices = gb.offices
-  if (!offices || offices.length === 0) return null
-
-  // "2026-04" → "4月"
-  function fmtM(ym: string) {
-    return ym.substring(5).replace(/^0/, '') + '月'
-  }
+  if (!gb.offices || gb.offices.length === 0) return null
+  function fmtM(ym: string) { return ym.substring(5).replace(/^0/, '') + '月' }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
-      <div className="bg-slate-100 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-        <h2 className="text-slate-700 font-bold text-sm">成長ボーナス 判定</h2>
-        <span className="text-xs text-slate-500">◎ MF+40% ／ ○ ±0% ／ ✖ −30%</span>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
+        <h2 className="font-bold text-gray-800 text-sm tracking-tight">成長ボーナス 判定</h2>
+        <div className="flex items-center gap-5 text-xs text-gray-500">
+          {[
+            { color: 'bg-emerald-500', label: '◎ MF+40%' },
+            { color: 'bg-amber-400',   label: '○  ±0%' },
+            { color: 'bg-red-500',     label: '✖ −30%' },
+          ].map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1.5">
+              <span className={`w-2.5 h-2.5 rounded-sm inline-block ${color}`} />
+              {label}
+            </span>
+          ))}
+          <span className="text-gray-300">│</span>
+          <span className="text-gray-400 text-[10px]">塗り＝実績　透過＝予測</span>
+        </div>
       </div>
 
+      {/* 事務所ごとの行 */}
       <div className="divide-y divide-gray-50">
-        {offices.map(office => {
-          const actual   = office.months.filter(m => m.isActual).slice(-4)   // 実績：直近4ヶ月
-          const forecast = office.months.filter(m => !m.isActual).slice(0, 3) // 予測：次3ヶ月
-
-          // 最新実績月の達成条件詳細
-          const latest = actual[actual.length - 1]
+        {gb.offices.map(office => {
+          const actual   = office.months.filter(m => m.isActual).slice(-4)
+          const forecast = office.months.filter(m => !m.isActual).slice(0, 3)
+          const latest   = actual[actual.length - 1]
           const singleGap = latest ? Math.max(0, latest.singleThreshold - latest.dia) : null
           const req3mGap  = latest ? Math.max(0, latest.req3m - latest.dia) : null
 
-          // 次月の見込み
-          const nextM = forecast[0]
-
           return (
-            <div key={office.office} className="px-5 py-4">
-              <div className="flex items-start gap-6 flex-wrap">
+            <div key={office.office} className="px-6 py-5 flex items-start gap-8 flex-wrap">
 
-                {/* 事務所名 */}
-                <div className="w-20 shrink-0 pt-1">
-                  <div className="text-sm font-bold text-gray-700">{office.office}</div>
-                </div>
-
-                {/* 実績バッジ */}
-                <div className="shrink-0">
-                  <div className="text-[9px] text-gray-400 mb-1.5 font-medium tracking-wide">― 実績 ―</div>
-                  <div className="flex gap-2">
-                    {actual.map(m => (
-                      <div key={m.month} className="text-center">
-                        <div className="text-[9px] text-gray-400 mb-0.5">{fmtM(m.month)}</div>
-                        <span className={judgeCls(m.judge)}>{m.judge || '—'}</span>
-                      </div>
-                    ))}
+              {/* 事務所名 + 今月判定（大） */}
+              <div className="w-28 shrink-0">
+                <div className="text-xs font-semibold text-gray-500 mb-3">{office.office}</div>
+                {latest && (
+                  <div className="flex items-center gap-2.5">
+                    <JudgeBadge judge={latest.judge} />
+                    <div className="text-[10px] text-gray-400 leading-tight">
+                      今月<br />{fmtM(latest.month)}
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* 実績バッジ列 */}
+              <div className="shrink-0">
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">実績</div>
+                <div className="flex gap-3">
+                  {actual.map(m => (
+                    <div key={m.month} className="text-center">
+                      <div className="text-[10px] text-gray-400 mb-1.5">{fmtM(m.month)}</div>
+                      <JudgeBadge judge={m.judge} />
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                {/* 区切り */}
-                <div className="self-stretch border-l border-gray-200 shrink-0" />
+              {/* 区切り */}
+              <div className="self-stretch border-l border-dashed border-gray-200 shrink-0" />
 
-                {/* 予測バッジ */}
-                <div className="shrink-0">
-                  <div className="text-[9px] text-gray-400 mb-1.5 font-medium tracking-wide">― このまま行くと ―</div>
-                  <div className="flex gap-2">
-                    {forecast.map(m => (
-                      <div key={m.month} className="text-center">
-                        <div className="text-[9px] text-gray-400 mb-0.5">{fmtM(m.month)}(予)</div>
-                        <span className={judgeCls(m.judge, true)}>{m.judge || '—'}</span>
-                      </div>
-                    ))}
-                    {forecast.length === 0 && (
-                      <span className="text-xs text-gray-300 self-center">予測データなし</span>
-                    )}
-                  </div>
+              {/* 予測バッジ列 */}
+              <div className="shrink-0">
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">このまま行くと</div>
+                <div className="flex gap-3">
+                  {forecast.map(m => (
+                    <div key={m.month} className="text-center">
+                      <div className="text-[10px] text-gray-400 mb-1.5">{fmtM(m.month)}</div>
+                      <JudgeBadge judge={m.judge} forecast />
+                    </div>
+                  ))}
+                  {forecast.length === 0 && (
+                    <span className="text-xs text-gray-300 self-center">予測データなし</span>
+                  )}
                 </div>
+              </div>
 
-                {/* 最新月の達成条件 */}
-                {latest && (latest.singleThreshold > 0 || latest.req3m > 0) && (
-                  <>
-                    <div className="self-stretch border-l border-gray-200 shrink-0" />
-                    <div className="shrink-0 text-[10px] text-gray-500 space-y-1 pt-0.5">
-                      <div className="text-[9px] text-gray-400 font-medium tracking-wide mb-1.5">
-                        ― {fmtM(latest.month)} 実績 ◎条件 ―
-                      </div>
-                      {/* 単月基準 */}
+              {/* ◎達成条件プログレスバー */}
+              {latest && (latest.singleThreshold > 0 || latest.req3m > 0) && (
+                <>
+                  <div className="self-stretch border-l border-gray-100 shrink-0" />
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      {fmtM(latest.month)} の ◎ 条件
+                    </div>
+                    <div className="space-y-3">
                       {latest.singleThreshold > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-20 shrink-0">単月基準</span>
-                          <span className="font-mono text-gray-700">{fmtDia(latest.singleThreshold)} dia</span>
-                          {singleGap === 0 ? (
-                            <span className="text-green-600 font-semibold">✓ 達成</span>
-                          ) : (
-                            <span className="text-orange-500">あと {fmtDia(singleGap!)} dia</span>
-                          )}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-gray-500">単月基準</span>
+                            <span className={singleGap === 0 ? 'text-emerald-600 font-bold' : 'text-gray-600 font-medium'}>
+                              {singleGap === 0 ? '✓ 達成' : `あと ${fmtDia(singleGap!)} dia`}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${singleGap === 0 ? 'bg-emerald-500' : 'bg-blue-400'}`}
+                              style={{ width: `${Math.min(100, (latest.dia / latest.singleThreshold) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] text-gray-300 mt-1">
+                            <span>{fmtDia(latest.dia)} dia</span>
+                            <span>目標 {fmtDia(latest.singleThreshold)}</span>
+                          </div>
                         </div>
                       )}
-                      {/* 3ヶ月基準 */}
                       {latest.req3m > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-20 shrink-0">3ヶ月基準</span>
-                          <span className="font-mono text-gray-700">{fmtDia(latest.req3m)} dia</span>
-                          {req3mGap === 0 ? (
-                            <span className="text-green-600 font-semibold">✓ 達成</span>
-                          ) : (
-                            <span className="text-orange-500">あと {fmtDia(req3mGap!)} dia</span>
-                          )}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-gray-500">3ヶ月基準</span>
+                            <span className={req3mGap === 0 ? 'text-emerald-600 font-bold' : 'text-gray-600 font-medium'}>
+                              {req3mGap === 0 ? '✓ 達成' : `あと ${fmtDia(req3mGap!)} dia`}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${req3mGap === 0 ? 'bg-emerald-500' : 'bg-purple-400'}`}
+                              style={{ width: `${Math.min(100, (latest.dia / latest.req3m) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] text-gray-300 mt-1">
+                            <span>{fmtDia(latest.dia)} dia</span>
+                            <span>目標 {fmtDia(latest.req3m)}</span>
+                          </div>
                         </div>
                       )}
-                      {/* 最低ライン */}
                       {latest.minDia > 0 && latest.dia < latest.minDia && (
-                        <div className="text-red-600 font-semibold text-[9px] pt-0.5">
-                          ⚠️ 最低ライン（{fmtDia(latest.minDia)} dia）割れ
+                        <div className="text-xs text-red-600 font-semibold pt-1">
+                          ⚠ 最低ライン（{fmtDia(latest.minDia)} dia）割れ
                         </div>
                       )}
                     </div>
-                  </>
-                )}
-
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           )
         })}
       </div>
 
-      <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400">
-        実績 = RAW_ライバー月次より集計（全ライバー対象）　／　予測 = 直近3ヶ月平均で自動推計　／　判定は DB_成長予測 シートの数式値
+      <div className="px-6 py-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400">
+        実績 = RAW_ライバー月次より集計　／　予測 = 直近3ヶ月平均で自動推計　／　判定は DB_成長予測 シートの数式値
       </div>
     </div>
   )
 }
 
-// ─── PL階層ツリー コンポーネント ──────────────────────────────────────
-function TreeRow({ indent, label, value, bold = false, colorClass = 'text-gray-700',
-  toggleable = false, open = true, onToggle }: {
-  indent: number; label: string; value: string
-  bold?: boolean; colorClass?: string
-  toggleable?: boolean; open?: boolean; onToggle?: () => void
+// ─── 売上 階層展開コンポーネント ────────────────────────────────────
+function SubBar({ label, value, base, colorBar, colorText }: {
+  label: string; value: number; base: number
+  colorBar: string; colorText: string
 }) {
+  const pct = base > 0 ? Math.min(100, (value / base) * 100) : 0
   return (
-    <div
-      className={`flex items-center gap-1 py-1.5 pr-3 rounded ${toggleable ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-      style={{ paddingLeft: 8 + indent * 18 }}
-      onClick={toggleable ? onToggle : undefined}
-    >
-      {toggleable
-        ? <span className="text-gray-400 text-[10px] w-3 shrink-0">{open ? '▾' : '▸'}</span>
-        : indent > 0
-          ? <span className="text-gray-300 text-xs w-3 shrink-0">└</span>
-          : <span className="w-3 shrink-0" />
-      }
-      <span className={`flex-1 text-sm ${bold ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>{label}</span>
-      <span className={`text-sm font-mono font-semibold ${colorClass}`}>{value}</span>
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-gray-500 w-32 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${colorBar}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={`text-xs font-mono font-semibold w-16 text-right shrink-0 ${colorText}`}>
+        {value ? fmtYen(value) : '—'}
+      </span>
     </div>
   )
 }
 
-function PLHierarchySection({ cur, selectedOffice, latestMonth }: {
-  cur: SectionSnap; selectedOffice: string; latestMonth: string
-}) {
-  const [revOpen, setRevOpen] = useState(true)
-  const [cpnOpen, setCpnOpen] = useState(false)
-  const [liverOpen, setLiverOpen] = useState(true)
+function MiniRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between text-xs py-0.5">
+      <span className="text-gray-400 pl-2">{label}</span>
+      <span className="font-mono text-gray-600">{value ? fmtYen(value) : '—'}</span>
+    </div>
+  )
+}
 
-  const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
-  const tax = Math.max(0, (cur.revTaxIn||0) - (cur.revTaxEx||0))
+function RevenueHierarchy({ off, allOffices, pctRevenue, latestMonth }: {
+  off: Record<string, SectionSnap>
+  allOffices: string[]
+  pctRevenue: number | null
+  latestMonth: string
+}) {
+  const [expanded, setExpanded]     = useState(false)
+  const [openOffice, setOpenOffice] = useState<string | null>(null)
+  const [cpnOpenMap, setCpnOpenMap] = useState<Record<string, boolean>>({})
+
+  const totalSnap  = off['全社合計'] ?? null
+  const totalRev   = totalSnap?.revTaxIn ?? 0
+  const officeKeys = allOffices.filter(o => o !== '全社合計' && off[o])
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
-      <div className="bg-slate-100 px-5 py-3 border-b border-slate-200">
-        <h2 className="text-slate-700 font-bold text-sm">
-          PL 内訳（{latestMonth}・{OFFICE_LABEL[selectedOffice] || selectedOffice}）
-        </h2>
-        <p className="text-slate-400 text-[11px] mt-0.5">▸ をクリックで展開</p>
-      </div>
-      <div className="px-3 py-3 grid grid-cols-2 gap-x-6 divide-x divide-gray-100">
-        {/* 左: 売上内訳 */}
-        <div>
-          <div className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase px-2 mb-1">売上内訳</div>
-          <TreeRow indent={0} label="売上（税込）" value={cur.revTaxIn ? fmtYen(cur.revTaxIn) : '—'}
-            bold colorClass="text-blue-800" toggleable open={revOpen} onToggle={() => setRevOpen(v => !v)} />
-          {revOpen && (
-            <>
-              <TreeRow indent={1} label="消費税相当" value={tax ? fmtYen(tax) : '—'} colorClass="text-gray-400" />
-              <TreeRow indent={1} label="売上（税抜）" value={cur.revTaxEx ? fmtYen(cur.revTaxEx) : '—'}
-                bold colorClass="text-blue-700" />
-              <TreeRow indent={2} label="投げ銭MF" value={cur.mf ? fmtYen(cur.mf) : '—'} colorClass="text-teal-700" />
-              <TreeRow indent={2} label="CPN報酬合計" value={cpnTotal ? fmtYen(cpnTotal) : '—'}
-                colorClass="text-green-700" toggleable open={cpnOpen} onToggle={() => setCpnOpen(v => !v)} />
-              {cpnOpen && (
-                <>
-                  <TreeRow indent={3} label="C5（30日50h）"     value={cur.cpnC5    ? fmtYen(cur.cpnC5)    : '—'} />
-                  <TreeRow indent={3} label="B2（デビューCPN）"  value={cur.cpnB2    ? fmtYen(cur.cpnB2)    : '—'} />
-                  <TreeRow indent={3} label="A（A1到達）"        value={cur.cpnA     ? fmtYen(cur.cpnA)     : '—'} />
-                  <TreeRow indent={3} label="S（S1到達）"        value={cur.cpnS     ? fmtYen(cur.cpnS)     : '—'} />
-                  <TreeRow indent={3} label="その他"             value={cur.cpnOther ? fmtYen(cur.cpnOther) : '—'} />
-                </>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-4 overflow-hidden">
+      {/* ── Level 0: 全社合計ヘッダー ── */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center px-6 py-5 hover:bg-blue-50/40 transition-colors group"
+      >
+        <div className="flex-1 flex items-center gap-6">
+          <div className="text-left">
+            <div className="text-[10px] font-semibold text-blue-500 uppercase tracking-widest mb-0.5">売上（税込）</div>
+            <div className="text-3xl font-black text-gray-900 tracking-tight tabular-nums">
+              {totalSnap ? fmtYen(totalSnap.revTaxIn) : '—'}
+            </div>
+          </div>
+          {pctRevenue !== null && pctRevenue !== undefined && (
+            <div className={`flex items-center gap-1 text-sm font-bold px-3 py-1.5 rounded-xl ${
+              pctRevenue >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
+            }`}>
+              {pctRevenue >= 0 ? '▲' : '▼'} {Math.abs(Math.round(pctRevenue))}%
+              <span className="text-[10px] font-normal text-gray-400 ml-1">前月比</span>
+            </div>
+          )}
+        </div>
+        <div className={`flex items-center gap-2 text-xs font-medium transition-colors
+          ${expanded ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500'}`}>
+          <span className="text-gray-300">{latestMonth}</span>
+          <span className={`text-sm transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▼</span>
+          <span>個社別</span>
+        </div>
+      </button>
+
+      {/* ── Level 1: 事務所ブレークダウン ── */}
+      {expanded && (
+        <div className="border-t border-gray-100">
+          {officeKeys.map(office => {
+            const s        = off[office]
+            if (!s) return null
+            const pctShare = totalRev > 0 ? (s.revTaxIn / totalRev) * 100 : 0
+            const isOpen   = openOffice === office
+            const cpnTotal = (s.cpnC5||0)+(s.cpnB2||0)+(s.cpnA||0)+(s.cpnS||0)+(s.cpnOther||0)
+            const tax      = Math.max(0, s.revTaxIn - s.revTaxEx)
+            const cpnOpen  = cpnOpenMap[office] ?? false
+
+            return (
+              <div key={office} className="border-b border-gray-50 last:border-0">
+                {/* 事務所行 */}
+                <button
+                  onClick={() => setOpenOffice(isOpen ? null : office)}
+                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-gray-50/80 transition-colors group"
+                >
+                  <div className="w-24 text-sm font-bold text-gray-700 text-left shrink-0">
+                    {OFFICE_LABEL[office] || office}
+                  </div>
+                  <div className="flex-1 flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, pctShare)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-400 w-9 text-right shrink-0">
+                      {Math.round(pctShare)}%
+                    </div>
+                  </div>
+                  <div className="text-lg font-bold text-gray-800 w-24 text-right shrink-0 tabular-nums">
+                    {fmtYen(s.revTaxIn)}
+                  </div>
+                  <div className={`text-xs text-gray-300 w-4 transition-transform duration-150 group-hover:text-blue-400
+                    ${isOpen ? 'rotate-180 text-blue-400' : ''}`}>▼</div>
+                </button>
+
+                {/* ── Level 2: 指標ブレークダウン ── */}
+                {isOpen && (
+                  <div className="bg-gradient-to-b from-gray-50 to-white border-t border-gray-100 px-10 py-5">
+                    <div className="space-y-4">
+                      {/* 消費税 */}
+                      <div className="flex justify-between text-xs text-gray-400">
+                        <span>うち消費税相当</span>
+                        <span className="font-mono">{tax ? fmtYen(tax) : '—'}</span>
+                      </div>
+                      {/* 売上税抜 */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-gray-700">売上（税抜）</span>
+                        <span className="text-base font-black text-blue-700 tabular-nums">{fmtYen(s.revTaxEx)}</span>
+                      </div>
+                      {/* 内訳バー */}
+                      <div className="pl-3 border-l-2 border-gray-100 space-y-2.5">
+                        <SubBar
+                          label="投げ銭 MF"
+                          value={s.mf} base={s.revTaxEx}
+                          colorBar="bg-teal-400" colorText="text-teal-700"
+                        />
+                        {/* CPN（展開） */}
+                        <div>
+                          <button
+                            className="w-full"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setCpnOpenMap(p => ({ ...p, [office]: !cpnOpen }))
+                            }}
+                          >
+                            <SubBar
+                              label={`CPN報酬合計 ${cpnOpen ? '▲' : '▼'}`}
+                              value={cpnTotal} base={s.revTaxEx}
+                              colorBar="bg-green-400" colorText="text-green-700"
+                            />
+                          </button>
+                          {cpnOpen && (
+                            <div className="mt-2 pl-3 border-l-2 border-green-100 space-y-1">
+                              <MiniRow label="C5（30日50h）"     value={s.cpnC5} />
+                              <MiniRow label="B2（デビューCPN）"  value={s.cpnB2} />
+                              <MiniRow label="A（A1到達）"        value={s.cpnA} />
+                              <MiniRow label="S（S1到達）"        value={s.cpnS} />
+                              <MiniRow label="その他"             value={s.cpnOther} />
+                            </div>
+                          )}
+                        </div>
+                        <SubBar
+                          label="レベルシェア"
+                          value={s.leveshe} base={s.revTaxEx}
+                          colorBar="bg-orange-400" colorText="text-orange-700"
+                        />
+                      </div>
+                      {/* ダイヤ */}
+                      <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">応援ダイヤ（MFベース）</span>
+                        <span className="text-sm font-bold text-emerald-700 tabular-nums">
+                          {s.dia ? `${fmtDia(s.dia)} dia` : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── ライバー 階層展開コンポーネント ────────────────────────────────
+function LiverSection({ cur, pctDia, pctLeveshe, pctDebut, isGlobal }: {
+  cur: SectionSnap
+  pctDia: number | null; pctLeveshe: number | null; pctDebut: number | null
+  isGlobal: boolean
+}) {
+  const [open, setOpen] = useState(false)
+
+  function PctBadge({ pct }: { pct: number | null }) {
+    if (pct === null || pct === undefined) return null
+    const positive = pct >= 0
+    return (
+      <span className={`text-xs font-semibold ${positive ? 'text-emerald-600' : 'text-red-500'}`}>
+        {positive ? '▲' : '▼'}{Math.abs(Math.round(pct))}%
+      </span>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
+      {/* ヘッダー */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center px-6 py-5 hover:bg-emerald-50/30 transition-colors group"
+      >
+        <div className="flex-1 flex items-center gap-6 flex-wrap">
+          {/* 応援ダイヤ（メイン） */}
+          <div className="text-left">
+            <div className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mb-0.5">応援ダイヤ</div>
+            <div className="text-3xl font-black text-gray-900 tracking-tight tabular-nums">
+              {cur.dia ? `${fmtDia(cur.dia)}` : '—'}
+              <span className="text-lg font-semibold text-gray-400 ml-1">dia</span>
+            </div>
+            {isGlobal && <PctBadge pct={pctDia} />}
+          </div>
+
+          {/* サブ指標 */}
+          <div className="flex gap-5 pl-6 border-l border-gray-100 flex-wrap">
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">レベシェ</div>
+              <div className="text-lg font-bold text-orange-700 tabular-nums">
+                {cur.leveshe ? fmtYen(cur.leveshe) : '—'}
+              </div>
+              {isGlobal && <PctBadge pct={pctLeveshe} />}
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">今月デビュー</div>
+              <div className="text-lg font-bold text-purple-700">
+                {cur.debut !== undefined ? `${cur.debut} 人` : '—'}
+              </div>
+              {isGlobal && <PctBadge pct={pctDebut} />}
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400 mb-0.5">C5達成</div>
+              <div className="text-lg font-bold text-red-700">
+                {cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'}
+              </div>
+              <span className="text-[9px] text-gray-400">翌月確定</span>
+            </div>
+          </div>
+        </div>
+
+        <div className={`flex items-center gap-2 text-xs font-medium transition-colors
+          ${open ? 'text-emerald-500' : 'text-gray-400 group-hover:text-emerald-500'}`}>
+          <span className={`text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
+          <span>ライバー基盤</span>
+        </div>
+      </button>
+
+      {/* ライバー基盤 展開 */}
+      {open && (
+        <div className="border-t border-gray-100 px-6 py-5">
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
+              <div className="text-[10px] text-gray-400 mb-1">登録ライバー数</div>
+              <div className="text-2xl font-black text-gray-800 tabular-nums">
+                {cur.registered ?? '—'}
+                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
+              <div className="text-[10px] text-gray-400 mb-1">アクティブ</div>
+              <div className="text-2xl font-black text-gray-800 tabular-nums">
+                {cur.active ?? '—'}
+                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
+              </div>
+              {cur.registered > 0 && (
+                <div className="text-[10px] text-gray-400 mt-1">
+                  ({Math.round((cur.active / cur.registered) * 100)}% 稼働率)
+                </div>
               )}
-              <TreeRow indent={2} label="レベルシェア" value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} colorClass="text-orange-700" />
-            </>
-          )}
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 col-span-1">
+              <div className="text-[10px] text-gray-400 mb-1">デビュー数</div>
+              <div className="text-2xl font-black text-purple-700 tabular-nums">
+                {cur.debut ?? '—'}
+                <span className="text-sm font-normal text-gray-400 ml-1">人</span>
+              </div>
+            </div>
+          </div>
+          {/* T1/T2/T3 バー */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="text-[10px] text-gray-400 mb-3 font-semibold uppercase tracking-wider">ティア構成</div>
+            {[
+              { label: 'T1（3万+）',    key: 't1' as const, color: 'bg-blue-500',  text: 'text-blue-700' },
+              { label: 'T2（1〜3万）',  key: 't2' as const, color: 'bg-green-500', text: 'text-green-700' },
+              { label: 'T3（1万未満）', key: 't3' as const, color: 'bg-gray-400',  text: 'text-gray-600' },
+            ].map(({ label, key, color, text }) => {
+              const val = cur[key] ?? 0
+              const pct = cur.active > 0 ? (val / cur.active) * 100 : 0
+              return (
+                <div key={key} className="flex items-center gap-3 mb-2">
+                  <span className="text-xs text-gray-500 w-28 shrink-0">{label}</span>
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                  <span className={`text-xs font-bold w-12 text-right tabular-nums ${text}`}>{val} 人</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
-        {/* 右: ライバー基盤 */}
-        <div className="pl-6">
-          <div className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase px-2 mb-1">ライバー基盤</div>
-          <TreeRow indent={0} label="ライバー基盤" value="" bold
-            toggleable open={liverOpen} onToggle={() => setLiverOpen(v => !v)} />
-          {liverOpen && (
-            <>
-              <TreeRow indent={1} label="登録ライバー数" value={cur.registered !== undefined ? `${cur.registered} 人` : '—'} />
-              <TreeRow indent={1} label="アクティブ" value={cur.active !== undefined ? `${cur.active} 人` : '—'}
-                bold colorClass="text-gray-800" />
-              <TreeRow indent={2} label="T1（3万+）"    value={cur.t1 !== undefined ? `${cur.t1} 人` : '—'} colorClass="text-blue-700" />
-              <TreeRow indent={2} label="T2（1〜3万）"  value={cur.t2 !== undefined ? `${cur.t2} 人` : '—'} colorClass="text-green-700" />
-              <TreeRow indent={2} label="T3（1万未満）" value={cur.t3 !== undefined ? `${cur.t3} 人` : '—'} colorClass="text-gray-600" />
-              <TreeRow indent={1} label="デビュー" value={cur.debut !== undefined ? `${cur.debut} 人` : '—'} colorClass="text-purple-700" />
-            </>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   )
 }
 
+// ─── メインコンポーネント ─────────────────────────────────────────────
 export default function FinanceDashboardClient({ data }: { data: SummaryData }) {
-  const off = data.officeSummary || {}
+  const off            = data.officeSummary || {}
   const availableOffices = OFFICE_ORDER.filter(o => off[o] && off[o].revTaxIn > 0)
-  const allOffices = OFFICE_ORDER.filter(o => off[o])
+  const allOffices     = OFFICE_ORDER.filter(o => off[o])
   const [selectedOffice, setSelectedOffice] = useState('全社合計')
 
   const isGlobal = selectedOffice === '全社合計'
-  const cur = (off[selectedOffice] || data.current || {}) as SectionSnap
-  const cpnTotal = (cur.cpnC5||0)+(cur.cpnB2||0)+(cur.cpnA||0)+(cur.cpnS||0)+(cur.cpnOther||0)
+  const cur      = (off[selectedOffice] || data.current || {}) as SectionSnap
 
-  const trend = data.trend || []
+  const trend       = data.trend || []
   const revActual   = trend.map(t => ({ month: t.month, value: t.revTaxIn }))
-  const revForecast = (data.revForecast || []).map(f => ({ month: f.month, value: f.revTaxIn }))
+  const revForecast = (data.revForecast   || []).map(f => ({ month: f.month, value: f.revTaxIn }))
   const diaActual   = trend.map(t => ({ month: t.month, value: t.dia }))
-  const diaForecast = (data.diaForecast || []).map(f => ({ month: f.month, value: f.dia }))
+  const diaForecast = (data.diaForecast   || []).map(f => ({ month: f.month, value: f.dia }))
   const actActual   = trend.map(t => ({ month: t.month, value: t.active }))
-  const actForecast = (data.activeForecast || []).map(f => ({ month: f.month, value: f.active }))
+  const actForecast = (data.activeForecast|| []).map(f => ({ month: f.month, value: f.active }))
   const debActual   = trend.map(t => ({ month: t.month, value: t.debut }))
   const debForecast = (data.debutForecast || []).map(f => ({ month: f.month, value: f.debut }))
 
@@ -331,10 +567,12 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         ))}
       </div>
 
-      {/* トレンド＆予測チャート（常時表示） */}
+      {/* チャート */}
       {trend.length > 0 && (
-        <div className="mb-6">
-          <SectionLabel>トレンド ＆ 3ヶ月予測</SectionLabel>
+        <div className="mb-8">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            トレンド ＆ 3ヶ月予測
+          </p>
           <ChartSection
             revActual={revActual} revForecast={revForecast}
             diaActual={diaActual} diaForecast={diaForecast}
@@ -344,39 +582,37 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </div>
       )}
 
-      {/* 成長ボーナス判定 */}
+      {/* 成長ボーナス */}
       {data.growthBonus && data.growthBonus.offices.length > 0 && (
         <>
-          <SectionLabel>成長ボーナス</SectionLabel>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス</p>
           <GrowthBonusSection gb={data.growthBonus} />
         </>
       )}
 
-      {/* 売上 KPI */}
-      <SectionLabel>売上</SectionLabel>
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <KPICard title="売上（税込）"     value={cur.revTaxIn ? fmtYen(cur.revTaxIn) : '—'} pct={isGlobal ? data.pctRevenue : undefined} color="#1565c0" />
-        <KPICard title="売上（税抜）"     value={cur.revTaxEx ? fmtYen(cur.revTaxEx) : '—'} pct={isGlobal ? data.pctRevTaxEx : undefined} color="#1976d2" />
-        <KPICard title="投げ銭報酬（MF）" value={cur.mf ? fmtYen(cur.mf) : '—'} pct={isGlobal ? data.pctMf : undefined} color="#0097a7" />
-        <KPICard title="CPN報酬合計"     value={cpnTotal ? fmtYen(cpnTotal) : '—'} pct={isGlobal ? data.pctCpnTotal : undefined} color="#00695c" />
-      </div>
+      {/* 売上 階層展開 */}
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>
+      <RevenueHierarchy
+        off={off}
+        allOffices={allOffices}
+        pctRevenue={isGlobal ? data.pctRevenue : null}
+        latestMonth={data.latestMonth}
+      />
 
-      {/* ライバー KPI */}
-      <SectionLabel>ライバー</SectionLabel>
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <KPICard title="応援ダイヤ" value={cur.dia ? `${fmtDia(cur.dia)} dia` : '—'} pct={isGlobal ? data.pctDia : undefined} color="#43a047" sub="MF算出ベース（新規・移籍のみ）" />
-        <KPICard title="レベシェ"      value={cur.leveshe ? fmtYen(cur.leveshe) : '—'} pct={isGlobal ? data.pctLeveshe : undefined} color="#ef6c00" />
-        <KPICard title="今月デビュー数" value={cur.debut !== undefined ? `${cur.debut} 人` : '—'} pct={isGlobal ? data.pctDebut : undefined} color="#7b1fa2" />
-        <KPICard title="C5達成数"      value={cur.c5Count !== undefined ? `${cur.c5Count} 人` : '—'} color="#c62828" sub="翌月CSV取込後に確定" />
-      </div>
+      {/* ライバー 階層展開 */}
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-6">ライバー</p>
+      <LiverSection
+        cur={cur}
+        pctDia={isGlobal ? data.pctDia : null}
+        pctLeveshe={isGlobal ? data.pctLeveshe : null}
+        pctDebut={isGlobal ? data.pctDebut : null}
+        isGlobal={isGlobal}
+      />
 
-      {/* PL 内訳（個社別・ツリー形式） */}
-      <PLHierarchySection cur={cur} selectedOffice={selectedOffice} latestMonth={data.latestMonth} />
-
-      {/* 事務所別サマリ比較表 */}
+      {/* 個社別サマリ比較表 */}
       {allOffices.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-8 overflow-x-auto">
-          <div className="bg-slate-100 px-5 py-3 border-b border-slate-200">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-x-auto">
+          <div className="bg-slate-50 px-5 py-3 border-b border-slate-100">
             <h2 className="text-slate-700 font-bold text-sm">個社別サマリ（{data.latestMonth}）</h2>
           </div>
           <table className="w-full text-xs">
@@ -401,7 +637,7 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
               {allOffices.map(office => {
                 const s = off[office]
                 if (!s) return null
-                const isTotal = office === '全社合計'
+                const isTotal    = office === '全社合計'
                 const isSelected = office === selectedOffice
                 const cpn = (s.cpnC5||0)+(s.cpnB2||0)+(s.cpnA||0)+(s.cpnS||0)+(s.cpnOther||0)
                 return (

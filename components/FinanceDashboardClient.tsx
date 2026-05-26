@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import ChartSection from './ChartSection'
+import MonthlySummaryTable from './MonthlySummaryTable'
 
 export type SectionSnap = {
   revTaxIn: number; revTaxEx: number; dia: number; mf: number
@@ -784,6 +785,14 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
           </div>
         </div>
       )}
+
+      {/* 月別サマリ（PL(全社)と連動） */}
+      <div className="mb-8">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          月別サマリ（計画／実績／予測 ・ 経費 ・ 事業利益）
+        </p>
+        <MonthlySummaryTable latestMonth={data.latestMonth} />
+      </div>
 
       {/* 成長ボーナス */}
       {data.growthBonus && data.growthBonus.offices.length > 0 && (

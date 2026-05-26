@@ -705,16 +705,19 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
   // 月ラベル "2026-04" → "4月"
   function fmtM(ym: string) { return ym.substring(5).replace(/^0/, '') + '月' }
 
-  // 月選択リスト（古い順）
-  const monthOptions = trend.map(t => t.month)
+  // 月選択リスト：過去月 + 最新月 + 未来月（forecast）を時系列順にマージ
+  const forecastMonths = (data.revForecast || []).map(f => f.month)
+  const allMonthOptions = Array.from(new Set([
+    ...trend.map(t => t.month),
+    ...forecastMonths
+  ])).sort()
 
   return (
     <>
-      {/* ── コントロールバー ─────────────────────────────── */}
+      {/* ── 中心月セレクター ─────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 px-5 py-4">
-        {/* 月選択 */}
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider w-8 shrink-0">月</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0">中心月</span>
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             {/* 最新ボタン */}
             <button
@@ -727,48 +730,28 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
             >
               最新（{fmtM(data.latestMonth)}）
             </button>
-            {/* 過去月（新しい順） */}
-            {[...monthOptions].reverse().filter(m => m !== data.latestMonth).map(m => (
-              <button
-                key={m}
-                onClick={() => setSelectedMonth(m)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition ${
-                  selectedMonth === m
-                    ? 'bg-blue-100 text-blue-700 font-semibold ring-1 ring-blue-300'
-                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                {fmtM(m)}
-              </button>
-            ))}
+            {/* 全月（過去 + 未来）を時系列順 */}
+            {allMonthOptions.filter(m => m !== data.latestMonth).map(m => {
+              const isForecast = forecastMonths.includes(m)
+              const active = selectedMonth === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(m)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition ${
+                    active
+                      ? 'bg-blue-100 text-blue-700 font-semibold ring-1 ring-blue-300'
+                      : isForecast
+                        ? 'bg-gray-50 text-gray-400 hover:bg-gray-100 italic'
+                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  {fmtM(m)}{isForecast ? '(予)' : ''}
+                </button>
+              )
+            })}
           </div>
-          {!isLatestMonth && (
-            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded-lg font-semibold shrink-0">
-              過去データ表示中（詳細・個社別は最新月のみ）
-            </span>
-          )}
-        </div>
-
-        {/* 事務所選択（最新月のみ有効） */}
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider w-8 shrink-0">事務所</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {(['全社合計', ...availableOffices.filter(o => o !== '全社合計')]).map(office => (
-              <button
-                key={office}
-                onClick={() => { if (isLatestMonth) setSelectedOffice(office) }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                  !isLatestMonth
-                    ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                    : selectedOffice === office
-                      ? 'bg-[#1565c0] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {OFFICE_LABEL[office] || office}
-              </button>
-            ))}
-          </div>
+          <span className="text-[10px] text-gray-400 shrink-0 ml-2">選択月の前後3ヶ月を表示</span>
         </div>
       </div>
 
@@ -777,7 +760,7 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
           月別タイムライン（売上トレンド × 成長判定 × 経営指標）
         </p>
-        <MonthlyTimelineView latestMonth={data.latestMonth} />
+        <MonthlyTimelineView latestMonth={effectiveMonth} />
       </div>
 
       {/* 売上 */}

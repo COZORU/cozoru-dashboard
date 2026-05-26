@@ -49,7 +49,7 @@ const InfoDeb = (
 )
 
 export default function ChartSection({
-  revActual, revForecast,
+  revActual, revPlan, revForecast,
   diaActual, diaForecast,
   actActual, actForecast,
   debActual, debForecast

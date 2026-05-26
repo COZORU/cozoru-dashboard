@@ -126,157 +126,16 @@ function SpecPill({ v }: { v: string }) {
   return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">未提出</span>
 }
 
-// ── デビュー前カード ────────────────────────────────────────────────────────
-const AVATAR_COLORS = [
-  'bg-violet-100 text-violet-700',
-  'bg-sky-100 text-sky-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-rose-100 text-rose-700',
-]
-
-function PreDebutCard({ row, idx }: { row: PreDebutRow; idx: number }) {
-  const [open, setOpen] = useState(false)
-  const pct    = overallPct(row)
-  const steps  = STEPS.map(s => ({ ...s, status: stepStatus(row, s.key) }))
-  const avatar = AVATAR_COLORS[idx % AVATAR_COLORS.length]
-
-  const daysToDebut = row.debutDate
-    ? Math.ceil((new Date(row.debutDate).getTime() - Date.now()) / 86400000)
-    : null
-  const isReady   = pct >= 90
-  const isUrgent  = daysToDebut !== null && daysToDebut <= 40 && !isReady
-
-  // パイプライン進行バー幅
-  const lastActiveIdx = steps.reduce((last, s, i) => (s.status !== 'pending' ? i : last), -1)
-  const lineWidth = lastActiveIdx >= 0
-    ? `calc(${(lastActiveIdx / (steps.length - 1)) * 100}% - 12px)`
-    : '0%'
-
-  return (
-    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-shadow hover:shadow-md
-      ${isReady ? 'border-emerald-200' : isUrgent ? 'border-amber-200' : 'border-gray-100'}`}>
-
-      {/* ── カード本体（クリックで展開） ── */}
-      <button className="w-full text-left px-5 pt-5 pb-4" onClick={() => setOpen(v => !v)}>
-
-        {/* 上段: アバター + 名前 + 進捗数値 */}
-        <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shrink-0 ${avatar}`}>
-            {row.liver.charAt(0)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-gray-900">{row.liver}</span>
-              {row.prevName !== '—' && <span className="text-[11px] text-gray-400">元: {row.prevName}</span>}
-              {isReady && (
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">デビュー準備完了</span>
-              )}
-              {isUrgent && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">まもなくデビュー</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
-              <span>担当: {row.manager}</span>
-              <span className="text-gray-200">·</span>
-              <span>デビュー予定: {row.debutMonth}</span>
-              {row.mtgCount > 0 && <><span className="text-gray-200">·</span><span>MTG {row.mtgCount}回</span></>}
-              {daysToDebut !== null && daysToDebut > 0 && (
-                <><span className="text-gray-200">·</span><span className="text-amber-600 font-semibold">{daysToDebut}日後</span></>
-              )}
-            </div>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className={`text-2xl font-black tabular-nums leading-none ${
-              pct >= 80 ? 'text-emerald-600' : pct >= 40 ? 'text-blue-600' : 'text-gray-300'
-            }`}>{pct}<span className="text-sm font-normal">%</span></div>
-            <div className="text-[10px] text-gray-400 mt-0.5">完了率</div>
-          </div>
-        </div>
-
-        {/* パイプライン */}
-        <div className="mt-5 relative">
-          {/* 背景ライン */}
-          <div className="absolute top-3 left-3 right-3 h-0.5 bg-gray-100 rounded-full" />
-          {/* 進行ライン */}
-          <div
-            className="absolute top-3 left-3 h-0.5 bg-emerald-400 rounded-full transition-all duration-500"
-            style={{ width: lineWidth }}
-          />
-          <div className="relative flex">
-            {steps.map(step => (
-              <div key={step.key} className="flex-1 flex flex-col items-center">
-                <StepNode status={step.status} />
-                <div className={`text-[9px] mt-1.5 font-medium text-center leading-tight ${
-                  step.status === 'done'   ? 'text-emerald-600' :
-                  step.status === 'active' ? 'text-blue-600' : 'text-gray-300'
-                }`}>{step.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-3 text-right text-[10px] text-gray-300">{open ? '▲ 閉じる' : '▼ 詳細を見る'}</div>
-      </button>
-
-      {/* ── 詳細展開エリア ── */}
-      {open && (
-        <div className="border-t border-gray-100 px-5 py-5 bg-gradient-to-b from-gray-50/60 to-white">
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">契約・準備</p>
-              <div className="space-y-2">
-                <InfoRow label="IRIAM ID"  value={row.iriamId} />
-                <InfoRow label="契約説明会" value={row.contractMtg} />
-                <InfoRow label="オリエン"  value={row.orientation} />
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">イラスト制作</p>
-              <div className="space-y-2">
-                <InfoRow label="担当絵師"  value={row.illustrator} />
-                <InfoRow label="ラフ納品"  value={row.roughDate ?? '—'} />
-                <InfoRow label="本番納品"  value={row.illustDate ?? '—'} />
-              </div>
-              <div className="mt-3">
-                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                  <span>進捗</span>
-                  <span className="font-semibold text-gray-600">{row.illustProgress}%</span>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${row.illustProgress === 100 ? 'bg-emerald-500' : 'bg-blue-400'}`}
-                    style={{ width: `${row.illustProgress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">SNS・MTG</p>
-              <div className="space-y-2">
-                <InfoRow label="X アカウント" value={row.xAccount} />
-                <InfoRow label="Twitter 状況" value={row.twitterProgress} />
-                <InfoRow label="初回 MTG"    value={row.firstMtgDate} />
-                <InfoRow label="MTG 回数"    value={`${row.mtgCount} 回`} />
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
-            <span className="text-[11px] text-gray-400">仕様書</span>
-            <SpecPill v={row.specStatus} />
-            <span className="text-[11px] text-gray-400">提出日: {row.specSubmit}</span>
-            {row.specUrl && (
-              <a href={row.specUrl} className="ml-auto text-xs text-blue-500 hover:text-blue-700 font-semibold">
-                確認する →
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
+// ── ステップ状態セルの小さい表示 ────────────────────────────────────────────
+function StepBadge({ status }: { status: 'done' | 'active' | 'pending' }) {
+  if (status === 'done')
+    return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black">✓</span>
+  if (status === 'active')
+    return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 border border-blue-200 text-white text-[10px]">◌</span>
+  return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-200 text-[10px]">○</span>
 }
 
-// ── デビュー前一覧セクション ────────────────────────────────────────────────
+// ── デビュー前一覧（テーブル形式） ────────────────────────────────────────────
 function PreDebutSection() {
   const rows   = PRE_DEBUT_DATA
   const ready  = rows.filter(r => overallPct(r) >= 90).length
@@ -284,37 +143,127 @@ function PreDebutSection() {
   const illustDone = rows.filter(r => r.illustProgress === 100).length
 
   return (
-    <section>
-      {/* セクションヘッダー */}
-      <div className="flex items-end justify-between mb-5">
+    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* ─────── ヘッダー ─────── */}
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">デビュー前 準備状況</h2>
-          <p className="text-xs text-gray-400 mt-0.5">各ライバーのデビューまでの進捗を管理</p>
+          <h2 className="font-bold text-gray-900 text-sm">デビュー前 準備状況</h2>
+          <p className="text-xs text-gray-400 mt-0.5">各ライバーのデビューまでの進捗を一覧表示</p>
         </div>
         {/* KPI バー */}
         <div className="flex items-center gap-4">
           {[
-            { label: '準備中',       value: `${rows.length} 名`,   color: 'text-gray-700' },
-            { label: '準備完了',     value: `${ready} 名`,          color: 'text-emerald-600' },
+            { label: '準備中',       value: `${rows.length}`,   color: 'text-gray-700' },
+            { label: '準備完了',     value: `${ready}`,          color: 'text-emerald-600' },
             { label: 'イラスト完了', value: `${illustDone}/${rows.length}`, color: 'text-blue-600' },
             { label: '平均進捗',     value: `${avgPct}%`,           color: 'text-violet-600' },
           ].map(({ label, value, color }) => (
             <div key={label} className="text-right">
-              <div className={`text-lg font-black tabular-nums ${color}`}>{value}</div>
+              <div className={`text-sm font-black tabular-nums ${color}`}>{value}</div>
               <div className="text-[10px] text-gray-400">{label}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* カードグリッド */}
-      <div className="grid grid-cols-2 gap-4">
-        {rows
-          .slice()
-          .sort((a, b) => overallPct(b) - overallPct(a))
-          .map((row, i) => (
-            <PreDebutCard key={row.no} row={row} idx={i} />
-          ))}
+      {/* ─────── テーブル ─────── */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 border-b border-gray-100">
+              <th className="px-4 py-2.5 text-left font-medium w-24">名前</th>
+              <th className="px-3 py-2.5 text-center font-medium w-12">進捗</th>
+              <th className="px-3 py-2.5 text-center font-medium whitespace-nowrap">申請 契約 ランク オリエン 仕様 イラスト SNS</th>
+              <th className="px-3 py-2.5 text-left font-medium w-20">担当者</th>
+              <th className="px-3 py-2.5 text-left font-medium w-20">デビュー</th>
+              <th className="px-3 py-2.5 text-right font-medium w-16">日数</th>
+              <th className="px-3 py-2.5 text-center font-medium w-12">状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows
+              .slice()
+              .sort((a, b) => overallPct(b) - overallPct(a))
+              .map((row, idx) => {
+                const pct = overallPct(row)
+                const steps = STEPS.map(s => ({ ...s, status: stepStatus(row, s.key) }))
+                const daysToDebut = row.debutDate
+                  ? Math.ceil((new Date(row.debutDate).getTime() - Date.now()) / 86400000)
+                  : null
+                const isReady = pct >= 90
+                const isUrgent = daysToDebut !== null && daysToDebut <= 40 && !isReady
+
+                return (
+                  <tr
+                    key={row.no}
+                    className={`border-b border-gray-50 transition-colors hover:bg-blue-50/30 ${
+                      idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                    } ${isReady ? 'bg-emerald-50/30' : isUrgent ? 'bg-amber-50/30' : ''}`}
+                  >
+                    {/* 名前 */}
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-gray-900">{row.liver}</div>
+                      {row.prevName !== '—' && (
+                        <div className="text-[10px] text-gray-400">元: {row.prevName}</div>
+                      )}
+                    </td>
+
+                    {/* 進捗% */}
+                    <td className="px-3 py-3 text-center">
+                      <div className={`text-lg font-black tabular-nums leading-none ${
+                        pct >= 80 ? 'text-emerald-600' : pct >= 40 ? 'text-blue-600' : 'text-gray-300'
+                      }`}>
+                        {pct}
+                      </div>
+                      <div className="text-[9px] text-gray-400">%</div>
+                    </td>
+
+                    {/* パイプラインステップ */}
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1.5 justify-center">
+                        {steps.map(step => (
+                          <StepBadge key={step.key} status={step.status} />
+                        ))}
+                      </div>
+                    </td>
+
+                    {/* 担当者 */}
+                    <td className="px-3 py-3 text-gray-700">{row.manager}</td>
+
+                    {/* デビュー予定 */}
+                    <td className="px-3 py-3 text-gray-700">
+                      <div className="font-semibold">{row.debutMonth}</div>
+                      {row.illustProgress === 100 && (
+                        <div className="text-[10px] text-gray-400">イラスト完</div>
+                      )}
+                    </td>
+
+                    {/* 日数 */}
+                    <td className="px-3 py-3 text-right">
+                      {daysToDebut !== null && daysToDebut > 0 ? (
+                        <span className={`font-semibold tabular-nums ${daysToDebut <= 40 ? 'text-amber-600' : 'text-gray-600'}`}>
+                          {daysToDebut}日
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[11px]">—</span>
+                      )}
+                    </td>
+
+                    {/* 状態バッジ */}
+                    <td className="px-3 py-3 text-center">
+                      {isReady ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-700 font-semibold">完了</span>
+                      ) : isUrgent ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-700 font-semibold">急</span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-500 font-semibold">準備中</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
       </div>
     </section>
   )

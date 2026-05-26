@@ -786,6 +786,14 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </div>
       )}
 
+      {/* 成長ボーナス（売上グラフの直下、月別サマリの上） */}
+      {data.growthBonus && data.growthBonus.offices.length > 0 && (
+        <>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス</p>
+          <GrowthBonusSection gb={data.growthBonus} />
+        </>
+      )}
+
       {/* 月別サマリ（PL(全社)と連動） */}
       <div className="mb-8">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
@@ -793,14 +801,6 @@ export default function FinanceDashboardClient({ data }: { data: SummaryData }) 
         </p>
         <MonthlySummaryTable latestMonth={data.latestMonth} />
       </div>
-
-      {/* 成長ボーナス */}
-      {data.growthBonus && data.growthBonus.offices.length > 0 && (
-        <>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">成長ボーナス</p>
-          <GrowthBonusSection gb={data.growthBonus} />
-        </>
-      )}
 
       {/* 売上 */}
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">売上</p>

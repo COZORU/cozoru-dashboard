@@ -12,30 +12,6 @@ type MonthSnap = {
   _filledFields?: string[]  // 補完したフィールド一覧
 }
 
-type GrowthMonth = { month: string; judge: string; isActual: boolean }
-type GrowthOffice = { office: string; months: GrowthMonth[] }
-
-// 表示する事務所順とラベル短縮
-const OFFICE_DISPLAY: { key: string; label: string }[] = [
-  { key: 'cozoru:全社',   label: 'cozoru' },
-  { key: 'ライブナウV',    label: 'ライブナウV' },
-  { key: 'Tolance:全社',  label: 'Tolance' },
-]
-
-function JudgeBadge({ judge, isActual }: { judge: string; isActual: boolean }) {
-  const colors: Record<string, string> = {
-    '◎': 'bg-emerald-500 text-white shadow-sm',
-    '○': 'bg-amber-400 text-white shadow-sm',
-    '✖': 'bg-red-500 text-white shadow-sm',
-  }
-  const base = colors[judge] || 'bg-gray-100 text-gray-400'
-  return (
-    <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${base} ${isActual ? '' : 'opacity-50'}`}>
-      {judge || '—'}
-    </span>
-  )
-}
-
 function fmtYen(v: number): string {
   if (!v && v !== 0) return '—'
   if (v === 0) return '—'
@@ -80,7 +56,6 @@ function InfoIcon({ desc }: { desc: string }) {
 
 export default function MonthlySummaryTable({ latestMonth }: { latestMonth: string }) {
   const [data, setData] = useState<MonthSnap[] | null>(null)
-  const [growthBonus, setGrowthBonus] = useState<GrowthOffice[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -119,22 +94,9 @@ export default function MonthlySummaryTable({ latestMonth }: { latestMonth: stri
           return out
         })
         setData(merged)
-        setGrowthBonus(sum.growthBonus?.offices || [])
       })
       .catch(() => setError('通信エラー'))
   }, [])
-
-  // 事務所×月 の成長判定マップ
-  const judgeMap = (() => {
-    const map: Record<string, Record<string, { judge: string; isActual: boolean }>> = {}
-    growthBonus.forEach(office => {
-      map[office.office] = {}
-      office.months.forEach(m => {
-        map[office.office][m.month] = { judge: m.judge, isActual: m.isActual }
-      })
-    })
-    return map
-  })()
 
   const displayMonths = (() => {
     if (!data || !latestMonth) return []
@@ -264,41 +226,6 @@ export default function MonthlySummaryTable({ latestMonth }: { latestMonth: stri
             </tr>
           </thead>
           <tbody>
-            {/* 成長判定（事務所別） */}
-            {OFFICE_DISPLAY.some(o => judgeMap[o.key]) && (
-              <>
-                {OFFICE_DISPLAY.map((office, oi) => {
-                  if (!judgeMap[office.key]) return null
-                  return (
-                    <tr key={`gb-${office.key}`}
-                        className={`${oi === 0 ? 'border-t-2 border-gray-200' : 'border-t border-gray-50'} hover:bg-gray-50/50`}>
-                      <td className={`px-4 py-2 sticky left-0 z-10 bg-white
-                                      ${oi === 0 ? 'border-l-4 border-l-blue-400 font-semibold text-gray-700' : 'pl-8 text-gray-500'}`}>
-                        {oi === 0 && (
-                          <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest mr-2">
-                            成長判定
-                          </span>
-                        )}
-                        {office.label}
-                        {oi === 0 && (
-                          <InfoIcon desc="iriam の月次成長判定（◎=最高/○=基準/✖=最低）。Tier係数が補正される。実績=塗りつぶし、予測=透過表示。DB_成長予測シートで自動算出（直近3ヶ月平均×成長補正）。" />
-                        )}
-                      </td>
-                      {displayMonths.map(m => {
-                        const j = judgeMap[office.key]?.[m.month]
-                        return (
-                          <td key={m.month}
-                              className={`px-3 py-2 text-center whitespace-nowrap
-                                          ${m.isActual ? '' : 'bg-gray-50/40'}`}>
-                            {j ? <JudgeBadge judge={j.judge} isActual={j.isActual} /> : <span className="text-gray-300">—</span>}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )
-                })}
-              </>
-            )}
             {ROWS.map((row, i) => {
               const isSection = !!row.section
               return (

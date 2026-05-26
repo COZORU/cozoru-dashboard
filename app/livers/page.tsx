@@ -179,50 +179,68 @@ function TierRankMatrix({ livers }: { livers: Liver[] }) {
   )
 }
 
-// ─── 上位T1フォーカス ─────────────────────────────────────────
-function TopT1Focus({ livers, latestMonth }: { livers: Liver[]; latestMonth: string }) {
-  const t1 = livers.filter(l => l.tier==='T1')
-  const top = t1.slice(0, Math.max(5, Math.ceil(t1.length*0.2)))
-  if (!top.length) return null
+// ─── Tier別上位フォーカス ────────────────────────────────────
+const TIER_META = [
+  { tier:'T1', label:'T1（3万+）',   desc:'売上の大部分を占める最重要層。離脱・ダイヤ減少が全社売上に直結。', badge:'bg-blue-100 text-blue-800' },
+  { tier:'T2', label:'T2（1〜3万）', desc:'次世代T1候補。ランク上昇・ダイヤ増加のトレンドが昇格の先行指標。',  badge:'bg-green-100 text-green-800' },
+  { tier:'T3', label:'T3（1万未満）',desc:'育成・観察層。上位20%はT2昇格の有力候補。',                      badge:'bg-gray-100 text-gray-700' },
+]
+
+function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: string }) {
+  const hasAny = TIER_META.some(m => livers.some(l => l.tier===m.tier))
+  if (!hasAny) return null
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-      <div className="mb-3">
-        <h2 className="text-sm font-bold text-gray-800">
-          上位T1フォーカス
-          <span className="ml-2 text-xs font-normal text-gray-400">上位20% / {top.length}人</span>
-        </h2>
+      <div className="mb-4">
+        <h2 className="text-sm font-bold text-gray-800">各Tier 上位フォーカス</h2>
         <p className="text-xs text-gray-400 mt-0.5">
-          売上の大部分を占める最重要ライバー層。離脱・ダイヤ減少が全社売上に直結するため個別監視が必要。
-          🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
+          各Tierのダイヤ上位20%（最低5人）。🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
         </p>
       </div>
-      <div className="flex flex-wrap gap-2.5">
-        {top.map(l => {
-          const band = getRankBand(l.rank)
-          const d = l.dia3m||[0,0,l.dia]
-          const drop3 = d[0]>0&&d[1]>0&&d[2]>0&&d[0]>d[1]&&d[1]>d[2]
-          const drop2 = !drop3&&d[1]>0&&d[2]>0&&d[1]>d[2]
-          const cur = RANK_ORD[l.rank]??-1, prv = RANK_ORD[l.prevRank]??-1
-          const rankUp = cur>prv && prv>=0, rankDn = cur<prv && prv>=0
-          const diff = monthDiff(l.debutMonth, latestMonth)
-          const isBanai = diff>=1 && diff<=2
-          const cardBorder = drop3 ? 'border-red-200' : drop2 ? 'border-amber-200' : 'border-gray-100'
-          const cardBg = drop3 ? 'bg-red-50' : drop2 ? 'bg-amber-50' : 'bg-gray-50'
+      <div className="space-y-6">
+        {TIER_META.map(({ tier, label, desc, badge }) => {
+          const tierLivers = livers.filter(l => l.tier===tier)
+          const top = tierLivers.slice(0, Math.max(5, Math.ceil(tierLivers.length*0.2)))
+          if (!top.length) return null
           return (
-            <div key={l.uid} className={`w-36 border ${cardBorder} ${cardBg} rounded-xl p-3`}>
-              <div className="text-xs font-semibold text-gray-800 truncate mb-1.5" title={l.name}>
-                {isBanai&&<span className="mr-0.5">🎌</span>}{l.name}
+            <div key={tier}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${badge}`}>{label}</span>
+                <span className="text-xs text-gray-400">上位20% / {top.length}人</span>
+                <span className="text-xs text-gray-400 hidden sm:inline">— {desc}</span>
               </div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-bold" style={{color:band?.color}}>{l.rank}</span>
-                  {rankUp&&<span className="text-[10px] text-emerald-500">↑</span>}
-                  {rankDn&&<span className="text-[10px] text-red-400">↓</span>}
-                </div>
-                <span className="text-[10px] text-gray-400">{drop3?'🔴':drop2?'🟡':''}</span>
+              <div className="flex flex-wrap gap-2.5">
+                {top.map(l => {
+                  const band = getRankBand(l.rank)
+                  const d = l.dia3m||[0,0,l.dia]
+                  const drop3 = d[0]>0&&d[1]>0&&d[2]>0&&d[0]>d[1]&&d[1]>d[2]
+                  const drop2 = !drop3&&d[1]>0&&d[2]>0&&d[1]>d[2]
+                  const cur = RANK_ORD[l.rank]??-1, prv = RANK_ORD[l.prevRank]??-1
+                  const rankUp = cur>prv && prv>=0, rankDn = cur<prv && prv>=0
+                  const diff = monthDiff(l.debutMonth, latestMonth)
+                  const isBanai = diff>=1 && diff<=2
+                  const cardBorder = drop3 ? 'border-red-200' : drop2 ? 'border-amber-200' : 'border-gray-100'
+                  const cardBg    = drop3 ? 'bg-red-50'    : drop2 ? 'bg-amber-50'    : 'bg-gray-50'
+                  return (
+                    <div key={l.uid} className={`w-36 border ${cardBorder} ${cardBg} rounded-xl p-3`}>
+                      <div className="text-xs font-semibold text-gray-800 truncate mb-1.5" title={l.name}>
+                        {isBanai&&<span className="mr-0.5">🎌</span>}{l.name}
+                      </div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-bold" style={{color:band?.color}}>{l.rank}</span>
+                          {rankUp&&<span className="text-[10px] text-emerald-500">↑</span>}
+                          {rankDn&&<span className="text-[10px] text-red-400">↓</span>}
+                        </div>
+                        <span className="text-[10px] text-gray-400">{drop3?'🔴':drop2?'🟡':''}</span>
+                      </div>
+                      <div className="text-xs text-gray-600 font-mono mb-2">{fmt(l.dia)}</div>
+                      <Sparkline values={d} color={band?.color||'#888'}/>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="text-xs text-gray-600 font-mono mb-2">{fmt(l.dia)}</div>
-              <Sparkline values={d} color={band?.color||'#888'}/>
             </div>
           )
         })}
@@ -310,7 +328,7 @@ export default function LiversPage() {
         {!loading && allLivers.length>0 && <TierRankMatrix livers={allLivers}/>}
 
         {/* 上位T1フォーカス */}
-        {!loading && allLivers.length>0 && <TopT1Focus livers={allLivers} latestMonth={latestMonth}/>}
+        {!loading && allLivers.length>0 && <TopTierFocus livers={allLivers} latestMonth={latestMonth}/>}
 
         {/* 予測・予測精度の補足 */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm px-4 py-3 mb-3 text-xs text-gray-500 leading-relaxed">

@@ -323,19 +323,27 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   const revActualPts = displayMonths.map(m => ({ month: m.month, value: m.revTaxEx      || 0 }))
   const expActualPts = displayMonths.map(m => ({ month: m.month, value: m.expTotal      || 0 }))
 
-  // ─── 大ブロック見出し ────────────────────────────────────────
+  // ─── 大ブロック見出し（タイトル + 月情報を1行に） ────────
   function BlockHeader({ title, color, bgColor, open, onToggle, subtitle }: {
     title: string; color: string; bgColor: string; open: boolean; onToggle: () => void; subtitle?: string
   }) {
     return (
-      <div className="cursor-pointer transition-colors hover:brightness-95"
-           style={{ borderTop: `4px solid ${color}`, backgroundColor: bgColor }}
+      <div className="grid cursor-pointer transition-colors hover:brightness-95"
+           style={{ ...gridStyle, borderTop: `4px solid ${color}`, backgroundColor: bgColor }}
            onClick={onToggle}>
+        {/* 左：タイトル */}
         <div className="px-4 py-3 flex items-center font-bold text-sm" style={{ color }}>
           <span className={`mr-2 text-xs transition-transform inline-block ${open ? 'rotate-90' : ''}`}>▶</span>
           {title}
-          {subtitle && <span className="ml-3 text-[10px] text-gray-500 font-normal">{subtitle}</span>}
+          {subtitle && <span className="ml-3 text-[9px] text-gray-500 font-normal">{subtitle}</span>}
         </div>
+        {/* 右：各月セル */}
+        {displayMonths.map(m => (
+          <div key={m.month} className={`px-2 py-2 text-center border-l border-white/40 flex flex-col justify-center`}>
+            <span className="text-xs font-bold" style={{ color }}>{m.month.substring(5)}月</span>
+            <span className="text-[9px] text-gray-500 font-normal">{m.isActual ? '実績' : '予測'}</span>
+          </div>
+        ))}
       </div>
     )
   }

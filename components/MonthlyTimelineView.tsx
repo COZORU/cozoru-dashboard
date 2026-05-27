@@ -22,6 +22,13 @@ type MonthSnap = {
   expTotal: number; expAcq: number; expOps: number; expOther: number
   profit: number; cfOps: number; bankEst: number; bankAct: number
 
+  // 事業外入金/出金（CF内訳）
+  nonOpsIn: number; nonOpsIn_revenue: number; nonOpsIn_groupTx: number
+  nonOpsIn_loanGrant: number; nonOpsIn_other: number
+  nonOpsOut: number; nonOpsOut_payment: number; nonOpsOut_groupTx: number
+  nonOpsOut_repay: number; nonOpsOut_realty: number; nonOpsOut_other: number
+  nonOpsOut_tax: number
+
   _filledFields?: string[]
 }
 
@@ -105,6 +112,7 @@ type RowDef = {
   info: string
   filledKey?: string
   actualOnly?: boolean
+  subChildren?: RowDef[]   // 孫展開（内訳）
 }
 type SectionDef = {
   title: string
@@ -150,7 +158,32 @@ const SECTIONS: SectionDef[] = [
   {
     title: 'キャッシュ',
     noRate: true,
-    parent: { label: '現金増減額（営業CF）', planKey: 'plan_cfOps', actualKey: 'cfOps', format: fmtYen, info: '計画=Row 75 ／ 実績=Row 339' },
+    parent: { label: '現金増減額（営業CF）', planKey: 'plan_cfOps', actualKey: 'cfOps', format: fmtYen, info: '計画=Row 75 ／ 実績=Row 339 ／ 事業利益 + 事業外入金 − 事業外出金' },
+    children: [
+      { label: '＋ 事業利益', planKey: 'plan_profit', actualKey: 'profit', format: fmtYen, info: '計画=Row 62 ／ 実績=Row 270' },
+      {
+        label: '＋ 事業外入金', actualKey: 'nonOpsIn', format: fmtYen, actualOnly: true,
+        info: 'PL Row 271（合計）／ クリックで内訳を展開',
+        subChildren: [
+          { label: '事業外収益',                              actualKey: 'nonOpsIn_revenue',   format: fmtYen, info: 'PL Row 272', actualOnly: true },
+          { label: 'グループ資金移動：入金',                    actualKey: 'nonOpsIn_groupTx',   format: fmtYen, info: 'PL Row 282', actualOnly: true },
+          { label: '借入金・出資金・補助金・給付金・還付金',     actualKey: 'nonOpsIn_loanGrant', format: fmtYen, info: 'PL Row 285', actualOnly: true },
+          { label: 'その他・不明',                            actualKey: 'nonOpsIn_other',     format: fmtYen, info: 'PL Row 292', actualOnly: true },
+        ]
+      },
+      {
+        label: '− 事業外出金', actualKey: 'nonOpsOut', format: fmtYen, actualOnly: true,
+        info: 'PL Row 293（合計）／ クリックで内訳を展開',
+        subChildren: [
+          { label: '事業外支払',           actualKey: 'nonOpsOut_payment', format: fmtYen, info: 'PL Row 294', actualOnly: true },
+          { label: 'グループ資金移動：出金', actualKey: 'nonOpsOut_groupTx', format: fmtYen, info: 'PL Row 317', actualOnly: true },
+          { label: '返済額・買戻額',       actualKey: 'nonOpsOut_repay',   format: fmtYen, info: 'PL Row 320', actualOnly: true },
+          { label: '不動産関連',           actualKey: 'nonOpsOut_realty',  format: fmtYen, info: 'PL Row 324', actualOnly: true },
+          { label: 'その他・不明',         actualKey: 'nonOpsOut_other',   format: fmtYen, info: 'PL Row 329', actualOnly: true },
+          { label: '税金等',               actualKey: 'nonOpsOut_tax',     format: fmtYen, info: 'PL Row 332', actualOnly: true },
+        ]
+      },
+    ]
   },
 ]
 
@@ -330,10 +363,11 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
     )
   }
 
-  // 実績値行（子項目の場合はクリックで事務所別ドリルダウン）
+  // 実績値行（子項目の場合はクリックで事務所別ドリルダウン or subChildren展開）
   function renderActualRow(row: RowDef, key: string, isChild: boolean) {
     const officeKey = ACTUAL_TO_OFFICE_KEY[row.actualKey as string]
-    const drillable = isChild && !!officeKey
+    const hasSubChildren = !!(row.subChildren && row.subChildren.length > 0)
+    const drillable = isChild && (!!officeKey || hasSubChildren)
     const isChildExpanded = drillable && !!expandedChildren[key]
 
     return (
@@ -360,8 +394,25 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
           })}
         </div>
 
-        {/* 子項目展開時：事務所別ドリルダウン */}
-        {isChildExpanded && officeKey && DRILLDOWN_OFFICES.map(office => (
+        {/* 子項目展開時：内訳（subChildren）優先、なければ事務所別 */}
+        {isChildExpanded && hasSubChildren && row.subChildren!.map((sub, si) => (
+          <div key={`${key}-sub-${si}`} className="grid border-t border-gray-50 bg-blue-50/20 hover:bg-blue-50/40" style={gridStyle}>
+            <div className="px-4 py-1.5 pl-14 text-[10px] text-gray-500 flex items-center">
+              ┣ {sub.label}
+              <InfoIcon desc={sub.info} />
+            </div>
+            {displayMonths.map(m => {
+              const v = m[sub.actualKey] as number
+              return (
+                <div key={m.month} className={`px-2 py-1.5 text-right tabular-nums text-[10px] border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
+                  {sub.format(v)}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+
+        {isChildExpanded && !hasSubChildren && officeKey && DRILLDOWN_OFFICES.map(office => (
           <div key={`${key}-${office}`} className="grid border-t border-gray-50 bg-blue-50/20 hover:bg-blue-50/40" style={gridStyle}>
             <div className="px-4 py-1.5 pl-14 text-[10px] text-gray-500">┣ {OFFICE_SHORT_LABEL[office] || office}</div>
             {displayMonths.map(m => {

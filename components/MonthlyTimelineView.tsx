@@ -286,13 +286,11 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   })
   const officeOrder = growthBonus.map(o => o.office).sort((a) => a.includes('cozoru') ? -1 : 1)
 
-  // グラフデータ
-  const revActualPts   = displayMonths.filter(m => m.isActual).map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
+  // グラフデータ（混合グラフ: 計画=折れ線、実績/予測=棒）
   const revPlanPts     = displayMonths.map(m => ({ month: m.month, value: m.plan_revTaxEx || 0 }))
-  const revForecastPts = displayMonths.filter(m => !m.isActual).map(m => ({ month: m.month, value: m.revTaxEx || 0 }))
-  const expActualPts   = displayMonths.filter(m => m.isActual).map(m => ({ month: m.month, value: m.expTotal || 0 }))
-  const expPlanPts     = displayMonths.map(m => ({ month: m.month, value: m.plan_expTotal || 0 }))
-  const expForecastPts = displayMonths.filter(m => !m.isActual).map(m => ({ month: m.month, value: m.expTotal || 0 }))
+  const profitPlanPts  = displayMonths.map(m => ({ month: m.month, value: m.plan_profit  || 0 }))
+  const revActualPts   = displayMonths.map(m => ({ month: m.month, value: m.revTaxEx     || 0 }))   // 実績+予測
+  const expActualPts   = displayMonths.map(m => ({ month: m.month, value: m.expTotal     || 0 }))   // 実績+予測
 
   // ─── 大ブロック見出し ────────────────────────────────────────
   function BlockHeader({ title, color, bgColor, open, onToggle, subtitle }: {
@@ -481,9 +479,9 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
       <div className="overflow-x-auto">
         <div className="min-w-[900px]">
 
-          {/* ── 月ヘッダー ── */}
-          <div className="grid border-b-2 border-gray-200 bg-gradient-to-b from-gray-50 to-white" style={gridStyle}>
-            <div className="px-4 py-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">指標 / 月</div>
+          {/* ── 月ヘッダー（sticky） ── */}
+          <div className="grid border-b-2 border-gray-200 bg-gradient-to-b from-gray-50 to-white sticky top-0 z-20" style={gridStyle}>
+            <div className="px-4 py-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-white">指標 / 月</div>
             {displayMonths.map(m => (
               <div key={m.month} className={`px-2 py-3 text-center border-l border-gray-100 ${monthBg(m)}`}>
                 <div className={`text-sm font-bold ${monthText(m)}`}>{m.month.substring(5)}月</div>
@@ -492,25 +490,37 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
             ))}
           </div>
 
-          {/* ── グラフ ── */}
+          {/* ── グラフ（混合: 計画=線、実績/予測=棒） ── */}
           <div className="grid border-b border-gray-100" style={gridStyle}>
             <div className="px-4 py-4 flex flex-col justify-center">
-              <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">売上 × 経費</div>
-              <div className="text-xs text-gray-600 mt-1">距離 = 利益</div>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2 text-[10px] text-gray-500">
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2.5"/></svg>売上実</span>
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#e65100" strokeWidth="2.5"/></svg>経費実</span>
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#90caf9" strokeWidth="2"/></svg>売上計</span>
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#ffb74d" strokeWidth="2"/></svg>経費計</span>
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>売上予</span>
-                <span className="flex items-center gap-1"><svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#e65100" strokeWidth="2" strokeDasharray="4 2"/></svg>経費予</span>
+              <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">経営トレンド</div>
+              <div className="text-xs text-gray-600 mt-1">計画 vs 実績</div>
+              <div className="flex flex-col gap-1 mt-2 text-[10px] text-gray-500">
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="6"><rect x="0" y="0" width="14" height="6" fill="#1565c0"/></svg>
+                  売上 実績/予測
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="6"><rect x="0" y="0" width="14" height="6" fill="#e65100"/></svg>
+                  経費 実績/予測
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>
+                  売上 計画
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#2e7d32" strokeWidth="2.5"/></svg>
+                  利益 計画
+                </span>
               </div>
             </div>
             <div className="h-[260px]" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
               <TimelineSalesChart
                 months={displayMonths.map(m => ({ month: m.month, isActual: m.isActual }))}
-                revActual={revActualPts} revPlan={revPlanPts} revForecast={revForecastPts}
-                expActual={expActualPts} expPlan={expPlanPts} expForecast={expForecastPts}
+                revPlan={revPlanPts}
+                profitPlan={profitPlanPts}
+                revActual={revActualPts}
+                expActual={expActualPts}
               />
             </div>
           </div>

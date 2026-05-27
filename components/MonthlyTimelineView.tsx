@@ -581,9 +581,10 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
             ))}
           </div>
 
-          {/* ── グラフ（混合: 計画=線、実績/予測=棒） ── */}
-          <div className="grid border-b border-gray-100" style={gridStyle}>
-            <div className="px-4 py-4 flex flex-col justify-center">
+          {/* ── グラフ（混合: 計画=線、実績/予測=棒）グラフ全幅・凡例オーバーレイ ── */}
+          <div className="border-b border-gray-100 relative" style={{ height: '280px' }}>
+            {/* 凡例（左上にオーバーレイ） */}
+            <div className="absolute left-4 top-3 z-10 pointer-events-none" style={{ width: '170px' }}>
               <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">経営トレンド</div>
               <div className="text-xs text-gray-600 mt-1">計画 vs 実績</div>
               <div className="flex flex-col gap-1 mt-2 text-[10px] text-gray-500">
@@ -601,7 +602,8 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                 </span>
               </div>
             </div>
-            <div className="h-[260px]" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
+            {/* グラフ全幅 */}
+            <div className="h-full">
               <TimelineSalesChart
                 months={displayMonths.map(m => ({ month: m.month, isActual: m.isActual }))}
                 revPlan={revPlanPts}

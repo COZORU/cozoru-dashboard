@@ -55,13 +55,15 @@ export default function TimelineSalesChart({
           dataKey="month"
           tick={false}
           axisLine={false}
-          padding={{ left: 16, right: 16 }}
+          padding={{ left: 0, right: 0 }}
         />
         <YAxis
           tickFormatter={fmtYen}
-          tick={{ fontSize: 10 }}
-          width={70}
+          tick={{ fontSize: 10, textAnchor: 'end' }}
+          width={240}
           axisLine={false}
+          tickMargin={8}
+          orientation="left"
         />
         <Tooltip
           formatter={(v, key) => {

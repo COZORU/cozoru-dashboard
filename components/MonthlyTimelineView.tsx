@@ -357,15 +357,17 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
       <div className="grid cursor-pointer transition-colors hover:brightness-95"
            style={{ ...gridStyle, borderTop: `4px solid ${color}`, backgroundColor: bgColor }}
            onClick={onToggle}>
-        {/* 左：タイトル */}
-        <div className="px-4 py-3 flex items-center font-bold text-sm" style={{ color }}>
-          <span className={`mr-2 text-xs transition-transform inline-block ${open ? 'rotate-90' : ''}`}>▶</span>
-          {title}
-          {subtitle && <span className="ml-3 text-[9px] text-gray-500 font-normal">{subtitle}</span>}
+        {/* 左：タイトル＋subtitle（縦並び） */}
+        <div className="px-4 py-2 flex items-center gap-2 min-w-0" style={{ color }}>
+          <span className={`text-xs transition-transform inline-block shrink-0 ${open ? 'rotate-90' : ''}`}>▶</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-sm whitespace-nowrap">{title}</div>
+            {subtitle && <div className="text-[9px] text-gray-500 font-normal leading-tight mt-0.5 truncate" title={subtitle}>{subtitle}</div>}
+          </div>
         </div>
         {/* 右：各月セル */}
         {displayMonths.map(m => (
-          <div key={m.month} className={`px-2 py-2 text-center border-l border-white/40 flex flex-col justify-center`}>
+          <div key={m.month} className="px-2 py-2 text-center border-l border-white/40 flex flex-col justify-center">
             <span className="text-xs font-bold" style={{ color }}>{m.month.substring(5)}月</span>
             <span className="text-[9px] text-gray-500 font-normal">{m.isActual ? '実績' : '予測'}</span>
           </div>

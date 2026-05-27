@@ -113,6 +113,7 @@ type RowDef = {
   filledKey?: string
   actualOnly?: boolean
   subChildren?: RowDef[]   // 孫展開（内訳）
+  predictUndefined?: boolean  // 予測月は「未定」表示
 }
 type SectionDef = {
   title: string
@@ -187,8 +188,12 @@ const SECTIONS: SectionDef[] = [
 ]
 
 const STANDALONE_ROWS: RowDef[] = [
-  { label: '想定の預金残高 ※実績のみ', actualKey: 'bankEst', format: fmtYen, info: 'PL Row 340 ／ 予測月は空欄', actualOnly: true },
-  { label: '実際の預金残高 ※実績のみ', actualKey: 'bankAct', format: fmtYen, info: 'PL Row 341（毎月10日時点）／ 予測月は空欄', actualOnly: true },
+  { label: '想定の預金残高', actualKey: 'bankEst', format: fmtYen,
+    info: 'PL Row 340 ／ 予測月 ★ は「直近実残高 + 累積補完CF」で算出（補完CF = 補完事業利益 + 事業外入金 − 事業外出金）',
+    actualOnly: true, filledKey: 'bankEst' },
+  { label: '実際の預金残高', actualKey: 'bankAct', format: fmtYen,
+    info: 'PL Row 341（毎月10日時点）／ 予測月は未定',
+    actualOnly: true, predictUndefined: true },
 ]
 
 // ─── 本体 ────────────────────────────────────────────────────
@@ -272,12 +277,33 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
             out._filledFields!.push('dia')
           }
           if (out._filledFields!.includes('revTaxEx')) {
+            // 補完事業利益 = 補完売上 − 経費合計
             out.profit = out.revTaxEx - m.expTotal
             out._filledFields!.push('profit')
+            // 補完CF = 補完事業利益 + 事業外入金 − 事業外出金（事業外は PL 値を流用）
+            out.cfOps = out.profit + (m.nonOpsIn || 0) - (m.nonOpsOut || 0)
+            out._filledFields!.push('cfOps')
           }
           return out
         })
-        setData(merged)
+
+        // 想定残高（bankEst）の予測月を「直近実残高 + 累積補完CF」で再計算
+        const sorted = [...merged].sort((a, b) => a.month.localeCompare(b.month))
+        let lastActualIdx = -1
+        for (let i = 0; i < sorted.length; i++) {
+          if (sorted[i].isActual) lastActualIdx = i
+        }
+        if (lastActualIdx >= 0) {
+          let runningBalance = sorted[lastActualIdx].bankAct || 0
+          for (let i = lastActualIdx + 1; i < sorted.length; i++) {
+            const m = sorted[i]
+            runningBalance += (m.cfOps || 0)
+            m.bankEst = runningBalance
+            m._filledFields = [...(m._filledFields || []), 'bankEst']
+          }
+        }
+
+        setData(sorted)
         setGrowthBonus(sum.growthBonus?.offices || [])
         setOfficeMonthly(plRes.data.fullpl.officeMonthly || {})
       })
@@ -391,10 +417,18 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
           {displayMonths.map(m => {
             const v = m[row.actualKey] as number
             const isFilled = !!(row.filledKey && m._filledFields?.includes(row.filledKey))
+            // 予測月で「未定」表示
+            if (row.predictUndefined && !m.isActual) {
+              return (
+                <div key={m.month} className={`px-2 py-2 text-right whitespace-nowrap text-xs border-l border-gray-100 ${monthBg(m)} text-gray-400 italic`}>
+                  未定
+                </div>
+              )
+            }
             return (
               <div key={m.month} className={`px-2 py-2 text-right tabular-nums whitespace-nowrap text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
                 {row.format(v)}
-                {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="DB_成長予測から補完">★</span>}
+                {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="補完値">★</span>}
               </div>
             )
           })}

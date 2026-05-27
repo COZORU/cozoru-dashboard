@@ -7,7 +7,6 @@ import {
 type Point = {
   month: string
   revPlan?: number
-  profitPlan?: number
   revAct?: number
   expAct?: number
 }
@@ -18,28 +17,25 @@ type Props = {
   months: { month: string; isActual: boolean }[]
   // 計画（折れ線）
   revPlan: Series[]
-  profitPlan: Series[]
   // 実績（棒）— 予測月もここに入れる
-  revActual: Series[]      // 実績月＋予測月の売上
-  expActual: Series[]      // 実績月＋予測月の経費
+  revActual: Series[]
+  expActual: Series[]
 }
 
-const REV_COLOR    = '#1565c0'  // 売上（青）
-const EXP_COLOR    = '#e65100'  // 経費（オレンジ）
-const PROFIT_COLOR = '#2e7d32'  // 利益計画（緑）
+const REV_COLOR = '#1565c0'  // 売上（青）
+const EXP_COLOR = '#e65100'  // 経費（オレンジ）
 
 const fmtYen = (v: number) => v >= 10000 ? `¥${Math.round(v / 10000).toLocaleString()}万` : `¥${v.toLocaleString()}`
 
 export default function TimelineSalesChart({
-  months, revPlan, profitPlan, revActual, expActual
+  months, revPlan, revActual, expActual
 }: Props) {
   const map: Record<string, Point> = {}
   months.forEach(m => { map[m.month] = { month: m.month } })
 
-  revPlan.forEach(p     => { if (map[p.month]) map[p.month].revPlan    = p.value })
-  profitPlan.forEach(p  => { if (map[p.month]) map[p.month].profitPlan = p.value })
-  revActual.forEach(p   => { if (map[p.month]) map[p.month].revAct     = p.value })
-  expActual.forEach(p   => { if (map[p.month]) map[p.month].expAct     = p.value })
+  revPlan.forEach(p   => { if (map[p.month]) map[p.month].revPlan = p.value })
+  revActual.forEach(p => { if (map[p.month]) map[p.month].revAct  = p.value })
+  expActual.forEach(p => { if (map[p.month]) map[p.month].expAct  = p.value })
 
   const chartData = months.map(m => map[m.month])
   const firstForecastMonth = months.find(m => !m.isActual)?.month
@@ -81,18 +77,15 @@ export default function TimelineSalesChart({
           labelFormatter={(m) => `${m}`}
         />
 
-        {/* 棒グラフ（売上実績・経費実績） — 同じカテゴリで横並び */}
-        <Bar dataKey="revAct" name="売上 実績/予測" fill={REV_COLOR}  barSize={14} radius={[3,3,0,0]} />
-        <Bar dataKey="expAct" name="経費 実績/予測" fill={EXP_COLOR}  barSize={14} radius={[3,3,0,0]} />
+        {/* 棒（売上実績・経費実績） */}
+        <Bar dataKey="revAct" name="売上 実績/予測" fill={REV_COLOR} barSize={14} radius={[3,3,0,0]} />
+        <Bar dataKey="expAct" name="経費 実績/予測" fill={EXP_COLOR} barSize={14} radius={[3,3,0,0]} />
 
-        {/* 折れ線（売上計画・利益計画） — 棒の上に重ねる */}
-        <Line type="monotone" dataKey="revPlan"    name="売上 計画"
-              stroke={REV_COLOR}    strokeWidth={2}  strokeDasharray="5 3"
+        {/* 折れ線（売上計画のみ） */}
+        <Line type="monotone" dataKey="revPlan" name="売上 計画"
+              stroke={REV_COLOR} strokeWidth={2} strokeDasharray="5 3"
               dot={{ r: 3, fill: '#fff', stroke: REV_COLOR, strokeWidth: 2 }}
               connectNulls={false} />
-        <Line type="monotone" dataKey="profitPlan" name="利益 計画"
-              stroke={PROFIT_COLOR} strokeWidth={2.5}
-              dot={{ r: 3 }} connectNulls={false} />
       </ComposedChart>
     </ResponsiveContainer>
   )

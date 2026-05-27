@@ -153,16 +153,10 @@ const SECTIONS: SectionDef[] = [
   {
     title: '利益',
     noRate: true,
-    parent: { label: '事業利益', planKey: 'plan_profit', actualKey: 'profit', format: fmtYen, info: '計画=Row 62 ／ 実績=Row 270 ／ 売上補完時は (補完売上 − 経費合計) で再計算', filledKey: 'profit' },
-  },
-  {
-    title: 'キャッシュ',
-    noRate: true,
-    parent: { label: '現金増減額（営業CF）', planKey: 'plan_cfOps', actualKey: 'cfOps', format: fmtYen, info: '計画=Row 75 ／ 実績=Row 339 ／ 事業利益 + 事業外入金 − 事業外出金' },
+    parent: { label: '事業利益', planKey: 'plan_profit', actualKey: 'profit', format: fmtYen, info: '計画=Row 62 ／ 実績=Row 270 ／ 売上補完時は (補完売上 − 経費合計) で再計算 ／ クリックで事業外入出金を展開', filledKey: 'profit' },
     children: [
-      { label: '＋ 事業利益', planKey: 'plan_profit', actualKey: 'profit', format: fmtYen, info: '計画=Row 62 ／ 実績=Row 270' },
       {
-        label: '＋ 事業外入金', actualKey: 'nonOpsIn', format: fmtYen, actualOnly: true,
+        label: '事業外入金', actualKey: 'nonOpsIn', format: fmtYen, actualOnly: true,
         info: 'PL Row 271（合計）／ クリックで内訳を展開',
         subChildren: [
           { label: '事業外収益',                              actualKey: 'nonOpsIn_revenue',   format: fmtYen, info: 'PL Row 272', actualOnly: true },
@@ -172,7 +166,7 @@ const SECTIONS: SectionDef[] = [
         ]
       },
       {
-        label: '− 事業外出金', actualKey: 'nonOpsOut', format: fmtYen, actualOnly: true,
+        label: '事業外出金', actualKey: 'nonOpsOut', format: fmtYen, actualOnly: true,
         info: 'PL Row 293（合計）／ クリックで内訳を展開',
         subChildren: [
           { label: '事業外支払',           actualKey: 'nonOpsOut_payment', format: fmtYen, info: 'PL Row 294', actualOnly: true },
@@ -184,6 +178,11 @@ const SECTIONS: SectionDef[] = [
         ]
       },
     ]
+  },
+  {
+    title: 'キャッシュ',
+    noRate: true,
+    parent: { label: '現金増減額（営業CF）', planKey: 'plan_cfOps', actualKey: 'cfOps', format: fmtYen, info: '計画=Row 75 ／ 実績=Row 339 ／ 事業利益 + 事業外入金 − 事業外出金' },
   },
 ]
 
@@ -319,11 +318,10 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
   })
   const officeOrder = growthBonus.map(o => o.office).sort((a) => a.includes('cozoru') ? -1 : 1)
 
-  // グラフデータ（混合グラフ: 計画=折れ線、実績/予測=棒）
-  const revPlanPts     = displayMonths.map(m => ({ month: m.month, value: m.plan_revTaxEx || 0 }))
-  const profitPlanPts  = displayMonths.map(m => ({ month: m.month, value: m.plan_profit  || 0 }))
-  const revActualPts   = displayMonths.map(m => ({ month: m.month, value: m.revTaxEx     || 0 }))   // 実績+予測
-  const expActualPts   = displayMonths.map(m => ({ month: m.month, value: m.expTotal     || 0 }))   // 実績+予測
+  // グラフデータ（混合グラフ: 売上計画=折れ線、売上/経費 実績=棒）
+  const revPlanPts   = displayMonths.map(m => ({ month: m.month, value: m.plan_revTaxEx || 0 }))
+  const revActualPts = displayMonths.map(m => ({ month: m.month, value: m.revTaxEx      || 0 }))
+  const expActualPts = displayMonths.map(m => ({ month: m.month, value: m.expTotal      || 0 }))
 
   // ─── 大ブロック見出し ────────────────────────────────────────
   function BlockHeader({ title, color, bgColor, open, onToggle, subtitle }: {
@@ -559,17 +557,12 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                   <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#1565c0" strokeWidth="2" strokeDasharray="4 2"/></svg>
                   売上 計画
                 </span>
-                <span className="flex items-center gap-1">
-                  <svg width="14" height="3"><line x1="0" y1="1.5" x2="14" y2="1.5" stroke="#2e7d32" strokeWidth="2.5"/></svg>
-                  利益 計画
-                </span>
               </div>
             </div>
             <div className="h-[260px]" style={{ gridColumn: `2 / span ${displayMonths.length}` }}>
               <TimelineSalesChart
                 months={displayMonths.map(m => ({ month: m.month, isActual: m.isActual }))}
                 revPlan={revPlanPts}
-                profitPlan={profitPlanPts}
                 revActual={revActualPts}
                 expActual={expActualPts}
               />

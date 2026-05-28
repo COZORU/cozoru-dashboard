@@ -286,22 +286,8 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
           return out
         })
 
-        // 想定残高（estBank14）の予測月を「直近実残高(14日時点) + 累積補完CF」で再計算
+        // 想定残高はスプシ Row 340 の値をそのまま使う（フロントで上書きしない）
         const sorted = [...merged].sort((a, b) => a.month.localeCompare(b.month))
-        let lastActualIdx = -1
-        for (let i = 0; i < sorted.length; i++) {
-          if (sorted[i].isActual) lastActualIdx = i
-        }
-        if (lastActualIdx >= 0) {
-          let runningBalance = sorted[lastActualIdx].actBank14 || sorted[lastActualIdx].bankAct || 0
-          for (let i = lastActualIdx + 1; i < sorted.length; i++) {
-            const m = sorted[i]
-            runningBalance += (m.cfOps || 0)
-            m.estBank14 = runningBalance
-            m._filledFields = [...(m._filledFields || []), 'estBank14']
-          }
-        }
-
         setData(sorted)
         setGrowthBonus(sum.growthBonus?.offices || [])
         setOfficeMonthly(plRes.data.fullpl.officeMonthly || {})
@@ -682,9 +668,9 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
 
           {/* ━━━━━━━━━━━━ 💰 預金残高（成長判定の直下） ━━━━━━━━━━━━ */}
           {(() => {
-            const bankRows: { label: string; key: keyof MonthSnap; predictOnly?: boolean; actualOnly2?: boolean; isFilled?: boolean }[] = [
-              { label: '想定の預金残高（14日時点）', key: 'estBank14',  predictOnly: false, isFilled: true },
-              { label: '想定の預金残高（最小値）',   key: 'estBankMin', predictOnly: false },
+            const bankRows: { label: string; key: keyof MonthSnap; actualOnly2?: boolean }[] = [
+              { label: '想定の預金残高（14日時点）', key: 'estBank14'  },
+              { label: '想定の預金残高（最小値）',   key: 'estBankMin' },
               { label: '実際の預金残高（14日時点）', key: 'actBank14',  actualOnly2: true },
               { label: '実際の預金残高（最小値）',   key: 'actBankMin', actualOnly2: true },
             ]
@@ -715,11 +701,9 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                         )
                       }
                       const v = m[row.key] as number
-                      const isFilled = !!(row.key === 'estBank14' && m._filledFields?.includes('estBank14'))
                       return (
                         <div key={m.month} className={`px-2 py-2 text-right tabular-nums text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
                           {fmtYen(v)}
-                          {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="補完値">★</span>}
                         </div>
                       )
                     })}

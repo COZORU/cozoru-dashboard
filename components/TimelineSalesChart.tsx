@@ -1,11 +1,12 @@
 'use client'
 import {
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Line, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceArea, ReferenceLine
 } from 'recharts'
 
 type Point = {
   month: string
+  isActual: boolean
   revPlan?: number
   revAct?: number
   expAct?: number
@@ -31,7 +32,7 @@ export default function TimelineSalesChart({
   months, revPlan, revActual, expActual
 }: Props) {
   const map: Record<string, Point> = {}
-  months.forEach(m => { map[m.month] = { month: m.month } })
+  months.forEach(m => { map[m.month] = { month: m.month, isActual: m.isActual } })
 
   revPlan.forEach(p   => { if (map[p.month]) map[p.month].revPlan = p.value })
   revActual.forEach(p => { if (map[p.month]) map[p.month].revAct  = p.value })
@@ -79,9 +80,17 @@ export default function TimelineSalesChart({
           labelFormatter={(m) => `${m}`}
         />
 
-        {/* 棒（売上実績・経費実績） */}
-        <Bar dataKey="revAct" name="売上 実績/予測" fill={REV_COLOR} barSize={14} radius={[3,3,0,0]} />
-        <Bar dataKey="expAct" name="経費 実績/予測" fill={EXP_COLOR} barSize={14} radius={[3,3,0,0]} />
+        {/* 棒（売上実績・経費実績） 予測月は半透明 */}
+        <Bar dataKey="revAct" name="売上 実績/予測" barSize={14} radius={[3,3,0,0]}>
+          {chartData.map((entry, i) => (
+            <Cell key={`rev-${i}`} fill={REV_COLOR} fillOpacity={entry.isActual ? 1 : 0.4} />
+          ))}
+        </Bar>
+        <Bar dataKey="expAct" name="経費 実績/予測" barSize={14} radius={[3,3,0,0]}>
+          {chartData.map((entry, i) => (
+            <Cell key={`exp-${i}`} fill={EXP_COLOR} fillOpacity={entry.isActual ? 1 : 0.4} />
+          ))}
+        </Bar>
 
         {/* 折れ線（売上計画のみ） */}
         <Line type="monotone" dataKey="revPlan" name="売上 計画"

@@ -668,11 +668,11 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
 
           {/* ━━━━━━━━━━━━ 💰 預金残高（成長判定の直下） ━━━━━━━━━━━━ */}
           {(() => {
-            const bankRows: { label: string; key: keyof MonthSnap; actualOnly2?: boolean }[] = [
+            const bankRows: { label: string; key: keyof MonthSnap }[] = [
               { label: '想定の預金残高（14日時点）', key: 'estBank14'  },
               { label: '想定の預金残高（最小値）',   key: 'estBankMin' },
-              { label: '実際の預金残高（14日時点）', key: 'actBank14',  actualOnly2: true },
-              { label: '実際の預金残高（最小値）',   key: 'actBankMin', actualOnly2: true },
+              { label: '実際の預金残高（14日時点）', key: 'actBank14'  },
+              { label: '実際の預金残高（最小値）',   key: 'actBankMin' },
             ]
             return (
               <>
@@ -692,14 +692,6 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
                       {row.label}
                     </div>
                     {displayMonths.map(m => {
-                      // 実残は実績月のみ、予測月は「未定」
-                      if (row.actualOnly2 && !m.isActual) {
-                        return (
-                          <div key={m.month} className={`px-2 py-2 text-right text-xs border-l border-gray-100 ${monthBg(m)} text-gray-400 italic`}>
-                            未定
-                          </div>
-                        )
-                      }
                       const v = m[row.key] as number
                       return (
                         <div key={m.month} className={`px-2 py-2 text-right tabular-nums text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>

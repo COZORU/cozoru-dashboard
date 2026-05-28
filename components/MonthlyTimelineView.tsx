@@ -20,7 +20,13 @@ type MonthSnap = {
   leveshe: number
   registered: number; active: number; acquired: number; debut: number
   expTotal: number; expAcq: number; expOps: number; expOther: number
-  profit: number; cfOps: number; bankEst: number; bankAct: number
+  profit: number; cfOps: number
+  // 預金残高
+  bankEst: number; bankAct: number  // 旧キー（互換）
+  estBank14: number; estBankMin: number
+  actBank14: number; actBankMin: number
+  actBank14_kiraboshi_coz: number; actBank14_gmo_coz: number; actBank14_gmo_tol: number; actBank14_gmo_lvn: number
+  actBankMin_kiraboshi_coz: number; actBankMin_gmo_coz: number; actBankMin_gmo_tol: number; actBankMin_gmo_lvn: number
 
   // 事業外入金/出金（CF内訳）
   nonOpsIn: number; nonOpsIn_revenue: number; nonOpsIn_groupTx: number
@@ -187,14 +193,7 @@ const SECTIONS: SectionDef[] = [
   },
 ]
 
-const STANDALONE_ROWS: RowDef[] = [
-  { label: '想定の預金残高', actualKey: 'bankEst', format: fmtYen,
-    info: 'PL Row 340 ／ 予測月 ★ は「直近実残高 + 累積補完CF」で算出（補完CF = 補完事業利益 + 事業外入金 − 事業外出金）',
-    actualOnly: true, filledKey: 'bankEst' },
-  { label: '実際の預金残高', actualKey: 'bankAct', format: fmtYen,
-    info: 'PL Row 341（毎月10日時点）／ 予測月は未定',
-    actualOnly: true, predictUndefined: true },
-]
+const STANDALONE_ROWS: RowDef[] = []  // 預金残高は成長判定の下に独立セクションで表示
 
 // ─── 本体 ────────────────────────────────────────────────────
 type Props = { latestMonth: string }
@@ -287,19 +286,19 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
           return out
         })
 
-        // 想定残高（bankEst）の予測月を「直近実残高 + 累積補完CF」で再計算
+        // 想定残高（estBank14）の予測月を「直近実残高(14日時点) + 累積補完CF」で再計算
         const sorted = [...merged].sort((a, b) => a.month.localeCompare(b.month))
         let lastActualIdx = -1
         for (let i = 0; i < sorted.length; i++) {
           if (sorted[i].isActual) lastActualIdx = i
         }
         if (lastActualIdx >= 0) {
-          let runningBalance = sorted[lastActualIdx].bankAct || 0
+          let runningBalance = sorted[lastActualIdx].actBank14 || sorted[lastActualIdx].bankAct || 0
           for (let i = lastActualIdx + 1; i < sorted.length; i++) {
             const m = sorted[i]
             runningBalance += (m.cfOps || 0)
-            m.bankEst = runningBalance
-            m._filledFields = [...(m._filledFields || []), 'bankEst']
+            m.estBank14 = runningBalance
+            m._filledFields = [...(m._filledFields || []), 'estBank14']
           }
         }
 
@@ -680,6 +679,55 @@ export default function MonthlyTimelineView({ latestMonth }: Props) {
               </div>
             )
           })}
+
+          {/* ━━━━━━━━━━━━ 💰 預金残高（成長判定の直下） ━━━━━━━━━━━━ */}
+          {(() => {
+            const bankRows: { label: string; key: keyof MonthSnap; predictOnly?: boolean; actualOnly2?: boolean; isFilled?: boolean }[] = [
+              { label: '想定の預金残高（14日時点）', key: 'estBank14',  predictOnly: false, isFilled: true },
+              { label: '想定の預金残高（最小値）',   key: 'estBankMin', predictOnly: false },
+              { label: '実際の預金残高（14日時点）', key: 'actBank14',  actualOnly2: true },
+              { label: '実際の預金残高（最小値）',   key: 'actBankMin', actualOnly2: true },
+            ]
+            return (
+              <>
+                <div className="grid border-t-4 border-purple-400 bg-purple-50/30" style={gridStyle}>
+                  <div className="px-4 py-2 flex items-center text-xs font-bold text-purple-700">
+                    💰 預金残高
+                  </div>
+                  {displayMonths.map(m => (
+                    <div key={m.month} className={`px-2 py-2 text-center border-l border-white/40 ${monthBg(m)}`}>
+                      <span className="text-xs font-semibold text-purple-700">{m.month.substring(5)}月</span>
+                    </div>
+                  ))}
+                </div>
+                {bankRows.map((row, ri) => (
+                  <div key={`bank-${ri}`} className="grid border-t border-gray-50 hover:bg-gray-50/30" style={gridStyle}>
+                    <div className="px-4 py-2 pl-6 flex items-center text-xs text-gray-700">
+                      {row.label}
+                    </div>
+                    {displayMonths.map(m => {
+                      // 実残は実績月のみ、予測月は「未定」
+                      if (row.actualOnly2 && !m.isActual) {
+                        return (
+                          <div key={m.month} className={`px-2 py-2 text-right text-xs border-l border-gray-100 ${monthBg(m)} text-gray-400 italic`}>
+                            未定
+                          </div>
+                        )
+                      }
+                      const v = m[row.key] as number
+                      const isFilled = !!(row.key === 'estBank14' && m._filledFields?.includes('estBank14'))
+                      return (
+                        <div key={m.month} className={`px-2 py-2 text-right tabular-nums text-xs border-l border-gray-100 ${monthBg(m)} ${monthText(m)}`}>
+                          {fmtYen(v)}
+                          {isFilled && <span className="text-amber-500 text-[10px] ml-0.5 font-bold" title="補完値">★</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </>
+            )
+          })()}
 
           {/* ━━━━━━━━━━━━ 📋 計画 ━━━━━━━━━━━━ */}
           <BlockHeader title="📋 計画" subtitle="経営計画（PL シート上部 Row 4-75）"

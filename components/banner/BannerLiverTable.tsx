@@ -21,9 +21,12 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
       <div className="px-4 py-3 border-b border-gray-50 flex flex-wrap items-center gap-2">
         <div>
-          <h3 className="text-sm font-bold text-gray-800">③ ライバー別 — 週の参加者（pt順）</h3>
+          <h3 className="text-sm font-bold text-gray-800">③ ライバー別 — 週の参加者（応援pt順）</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            選んだ週の参加者をpt降順で表示。<span className="px-1 rounded bg-amber-100 text-amber-700 font-medium">色付き</span>＝100位以内。
+            応援pt降順で表示。<span className="px-1 rounded bg-amber-100 text-amber-700 font-medium">色付き</span>＝各自のバナイベで100位以内（入賞）。
+          </p>
+          <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
+            ※順位は<b className="font-medium">各自が出たバナイベ（回）内の順位</b>です。回ごとに参加者・激戦度が違うため、ptと順位は必ずしも一致しません。
           </p>
         </div>
         <div className="ml-auto inline-flex bg-gray-100 rounded-lg p-1">

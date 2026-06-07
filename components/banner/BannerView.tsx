@@ -56,11 +56,11 @@ export default function BannerView() {
           実績ありのレーベルのみ
         </label>
         {loading && <span className="text-xs text-gray-400">更新中…</span>}
-        <span className="ml-auto text-xs text-gray-400">入賞＝100位以内</span>
+        <span className="ml-auto text-xs text-gray-400">「100位内」＝順位100位以内</span>
       </div>
 
       <BannerKpiHeader summary={data.summary} />
-      <BannerMatrix title="① 個社別 — 週別バナイベ実績" subtitle="pt合計の降順。🏅＝入賞数（100位以内）。バー＝pt合計のヒート。名前下＝4週pt推移。" entities={data.byOrg} weeks={data.weeks} />
+      <BannerMatrix title="① 個社別 — 週別バナイベ実績" subtitle="pt合計の降順。「100位内」＝順位100位以内の人数。バー＝pt合計のヒート。名前下＝4週pt推移。" entities={data.byOrg} weeks={data.weeks} />
       <BannerMatrix title="② レーベル別 — 週別バナイベ実績" subtitle="レーベル単位の戦闘力。指標は個社別と同じ。" entities={labels} weeks={data.weeks} />
       <BannerLiverTable livers={data.byLiver} weeks={data.weeks} />
     </div>

@@ -14,8 +14,8 @@ export default function BannerKpiHeader({ summary }: { summary: BannerSummary | 
   const p = summary.prev
   const cards = [
     { label: '参加数',  value: summary.joinCount.toLocaleString(), delta: <Delta cur={summary.joinCount} prev={p?.joinCount} /> },
-    { label: '入賞数',  value: summary.winCount.toLocaleString(),  delta: <Delta cur={summary.winCount} prev={p?.winCount} /> },
-    { label: '入賞率',  value: `${summary.winRate}%`,              delta: <Delta cur={summary.winRate} prev={p?.winRate} suffix="%" /> },
+    { label: '100位以内数', value: summary.winCount.toLocaleString(), delta: <Delta cur={summary.winCount} prev={p?.winCount} /> },
+    { label: '100位以内率', value: `${summary.winRate}%`,             delta: <Delta cur={summary.winRate} prev={p?.winRate} suffix="%" /> },
     { label: '平均pt',  value: fmt(summary.avgPt),                 delta: <Delta cur={summary.avgPt} prev={p?.avgPt} /> },
   ]
   return (

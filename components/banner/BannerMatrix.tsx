@@ -74,7 +74,7 @@ function MetricHeader() {
     <>
       <th className="px-2 py-1 font-semibold text-right border-l border-gray-100">pt合計</th>
       <th className="px-2 py-1 font-semibold text-right">平均</th>
-      <th className="px-2 py-1 font-semibold text-center">🏅</th>
+      <th className="px-2 py-1 font-semibold text-center whitespace-nowrap">100位内</th>
       <th className="px-2 py-1 font-semibold text-right">参加</th>
     </>
   )
@@ -90,7 +90,7 @@ function CellGroup({ c, sectionMax, highlight }: { c: BannerEntity['weekly'][num
       <td className="px-2 py-2 text-right text-slate-500 tabular-nums">{fmt(c.avgPt)}</td>
       <td className="px-2 py-2 text-center">
         {c.winCount > 0
-          ? <span className="inline-block min-w-[22px] px-1.5 rounded-full bg-amber-100 text-amber-700 font-bold text-[10px]">🏅{c.winCount}</span>
+          ? <span className="inline-block min-w-[22px] px-1.5 rounded-full bg-amber-100 text-amber-700 font-bold text-[10px]">{c.winCount}</span>
           : <span className="text-gray-300">—</span>}
       </td>
       <td className="px-2 py-2 text-right text-slate-400 tabular-nums">{c.joinCount || '—'}</td>

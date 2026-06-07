@@ -200,7 +200,7 @@ function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: s
         <div>
           <h2 className="text-sm font-bold text-gray-800">各Tier 上位フォーカス</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            各Tierのダイヤ上位20%（最低5人）。🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
+            各Tierを<b className="text-gray-500">応援ダイヤの多い順</b>に並べ、<b className="text-gray-500">上位20%（端数切上・最低5人）</b>を表示。🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
             <span className="ml-1 text-blue-500">{open ? '（クリックで閉じる）' : '（クリックで展開）'}</span>
           </p>
         </div>
@@ -216,7 +216,7 @@ function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: s
             <div key={tier}>
               <div className="flex items-center gap-2 mb-2">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${badge}`}>{label}</span>
-                <span className="text-xs text-gray-400">上位20% / {top.length}人</span>
+                <span className="text-xs text-gray-400">上位{top.length}人 ／ 全{tierLivers.length}人</span>
                 <span className="text-xs text-gray-400 hidden sm:inline">— {desc}</span>
               </div>
               <div className="flex flex-wrap gap-2.5">

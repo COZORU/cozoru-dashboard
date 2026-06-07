@@ -191,17 +191,23 @@ const TIER_META = [
 
 function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: string }) {
   const hasAny = TIER_META.some(m => livers.some(l => l.tier===m.tier))
+  const [open, setOpen] = useState(false)
   if (!hasAny) return null
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-      <div className="mb-4">
-        <h2 className="text-sm font-bold text-gray-800">各Tier 上位フォーカス</h2>
-        <p className="text-xs text-gray-400 mt-0.5">
-          各Tierのダイヤ上位20%（最低5人）。🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
-        </p>
-      </div>
-      <div className="space-y-6">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-start justify-between text-left gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-gray-800">各Tier 上位フォーカス</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            各Tierのダイヤ上位20%（最低5人）。🔴=3か月連続下降（即対応）、🟡=直近2か月下降（要注視）。
+            <span className="ml-1 text-blue-500">{open ? '（クリックで閉じる）' : '（クリックで展開）'}</span>
+          </p>
+        </div>
+        <span className={`flex-shrink-0 mt-0.5 text-gray-400 text-base leading-none transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden>▾</span>
+      </button>
+      {open && (
+      <div className="space-y-6 mt-4">
         {TIER_META.map(({ tier, label, desc, badge }) => {
           const tierLivers = livers.filter(l => l.tier===tier)
           const top = tierLivers.slice(0, Math.max(5, Math.ceil(tierLivers.length*0.2)))
@@ -248,6 +254,7 @@ function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: s
           )
         })}
       </div>
+      )}
     </div>
   )
 }

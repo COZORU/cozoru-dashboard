@@ -31,6 +31,26 @@ export type BannerSummary = {
   avgPt: number
   prev: { joinCount: number; winCount: number; winRate: number; avgPt: number } | null
 }
+export type BannerEventParticipant = {
+  name: string
+  office: string
+  label: string
+  rank: number
+  pt: number
+  win: boolean
+}
+export type BannerEvent = {
+  week: string
+  eventId: string
+  blockId: string
+  eventName: string
+  office: string
+  start: string
+  end: string
+  count: number
+  winCount: number
+  participants: BannerEventParticipant[]
+}
 export type BannerData = {
   baseDate: string
   weeks: string[]
@@ -38,5 +58,6 @@ export type BannerData = {
   byOrg: BannerEntity[]
   byLabel: BannerEntity[]
   byLiver: BannerLiver[]
+  events?: BannerEvent[]
   summary: BannerSummary | null
 }

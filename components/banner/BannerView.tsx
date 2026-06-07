@@ -62,7 +62,7 @@ export default function BannerView() {
       <BannerKpiHeader summary={data.summary} />
       <BannerMatrix title="① 個社別 — 週別バナイベ実績" subtitle="pt合計の降順。「100位内」＝順位100位以内の人数。バー＝pt合計のヒート。名前下＝4週pt推移。" entities={data.byOrg} weeks={data.weeks} />
       <BannerMatrix title="② レーベル別 — 週別バナイベ実績" subtitle="レーベル単位の戦闘力。指標は個社別と同じ。" entities={labels} weeks={data.weeks} />
-      <BannerLiverTable livers={data.byLiver} events={data.events} weeks={data.weeks} />
+      <BannerLiverTable livers={data.byLiver} weeks={data.weeks} />
     </div>
   )
 }

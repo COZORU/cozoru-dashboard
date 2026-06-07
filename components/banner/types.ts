@@ -15,6 +15,7 @@ export type BannerLiverWeek = {
   rank: number
   pt: number
   win: boolean
+  joined: boolean
 }
 export type BannerLiver = {
   name: string

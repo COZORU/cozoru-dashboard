@@ -21,7 +21,7 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
       <div className="px-4 py-3 border-b border-gray-50 flex flex-wrap items-center gap-2">
         <div>
-          <h3 className="text-sm font-bold text-gray-800">③ ライバー別 — 週の参加者（応援pt順）</h3>
+          <h3 className="text-sm font-bold text-gray-800">③ ライバー別 — 回（バナイベ）の参加者（応援pt順）</h3>
           <p className="text-xs text-gray-400 mt-0.5">
             応援pt降順で表示。<span className="px-1 rounded bg-amber-100 text-amber-700 font-medium">色付き</span>＝各自のバナイベで100位以内（入賞）。
           </p>

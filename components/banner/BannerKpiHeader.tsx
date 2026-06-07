@@ -20,7 +20,7 @@ export default function BannerKpiHeader({ summary }: { summary: BannerSummary | 
   ]
   return (
     <div className="mb-4">
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">最新週 {ymdToLabel(summary.week)} の全社サマリ</p>
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">最新回 {ymdToLabel(summary.week)}（バナイベ） の全社サマリ</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cards.map(c => (
           <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">

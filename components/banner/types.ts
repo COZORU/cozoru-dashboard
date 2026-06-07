@@ -15,7 +15,7 @@ export type BannerLiverWeek = {
   rank: number
   pt: number
   win: boolean
-  joined: boolean
+  joined?: boolean   // 新GASでは常に付与。旧版互換のため任意。
 }
 export type BannerLiver = {
   name: string

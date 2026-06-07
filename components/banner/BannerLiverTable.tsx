@@ -10,7 +10,7 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
 
   const participants = livers
     .map(l => ({ l, c: l.weekly[idx] }))
-    .filter(x => x.c && x.c.joined)
+    .filter(x => x.c && (x.c.joined ?? (x.c.pt > 0 || x.c.rank > 0)))
     .sort((a, b) => (Number(b.c.win) - Number(a.c.win)) || (b.c.pt - a.c.pt))
 
   const winners = participants.filter(x => x.c.win).length

@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Sidebar from '@/components/Sidebar'
 import ChartSection from '@/components/ChartSection'
+import BannerView from '@/components/banner/BannerView'
 import { type SummaryData, LiverSection } from '@/components/FinanceDashboardClient'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -253,6 +254,7 @@ function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: s
 
 // ─── Main Page ───────────────────────────────────────────────
 export default function LiversPage() {
+  const [view, setView] = useState<'livers'|'banners'>('livers')
   const [data, setData]           = useState<ApiData|null>(null)
   const [loading, setLoading]     = useState(true)
   const [month, setMonth]         = useState('')
@@ -311,6 +313,20 @@ export default function LiversPage() {
           <p className="text-sm text-gray-400 mt-1">最新月: {latestMonth||'—'} ／ {livers.length} 人表示中</p>
         </div>
 
+        {/* ビュー切替タブ */}
+        <div className="inline-flex bg-gray-100 rounded-lg p-1 mb-6">
+          {([['livers','① ライバー基盤'],['banners','② バナー実績']] as const).map(([key,label]) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${view===key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >{label}</button>
+          ))}
+        </div>
+
+        {view === 'banners' && <BannerView />}
+
+        {view === 'livers' && (<>
         {/* グラフセクション */}
         <div className="mb-8">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
@@ -467,7 +483,8 @@ export default function LiversPage() {
             </table>
           )}
         </div>
-      </main>
+        </>)}
+        </main>
     </div>
   )
 }

@@ -206,6 +206,29 @@ function TopTierFocus({ livers, latestMonth }: { livers: Liver[]; latestMonth: s
         </div>
         <span className={`flex-shrink-0 mt-0.5 text-gray-400 text-base leading-none transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden>▾</span>
       </button>
+      <div className="flex flex-wrap gap-2 mt-3">
+        {TIER_META.map(({ tier, badge }) => {
+          const tl = livers.filter(l => l.tier === tier)
+          const top = tl.slice(0, Math.max(5, Math.ceil(tl.length * 0.2)))
+          if (!top.length) return null
+          let red = 0, yellow = 0
+          top.forEach(l => {
+            const d = l.dia3m || [0, 0, l.dia]
+            const drop3 = d[0] > 0 && d[1] > 0 && d[2] > 0 && d[0] > d[1] && d[1] > d[2]
+            const drop2 = !drop3 && d[1] > 0 && d[2] > 0 && d[1] > d[2]
+            if (drop3) red++; else if (drop2) yellow++
+          })
+          return (
+            <span key={tier} className="inline-flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+              <span className={`font-bold px-1.5 py-0.5 rounded ${badge}`}>{tier}</span>
+              <span className="text-gray-500">上位{top.length}人</span>
+              {red > 0 && <span className="font-semibold text-red-500">🔴{red}</span>}
+              {yellow > 0 && <span className="font-semibold text-amber-500">🟡{yellow}</span>}
+              {red === 0 && yellow === 0 && <span className="text-emerald-600">✓警戒なし</span>}
+            </span>
+          )
+        })}
+      </div>
       {open && (
       <div className="space-y-6 mt-4">
         {TIER_META.map(({ tier, label, desc, badge }) => {

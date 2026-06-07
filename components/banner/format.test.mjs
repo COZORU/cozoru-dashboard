@@ -1,0 +1,10 @@
+import assert from 'node:assert';
+import { fmt, ymdToLabel, heatPct } from './format.ts';
+assert.strictEqual(fmt(564781), '56.5万');
+assert.strictEqual(fmt(9800), '9,800');
+assert.strictEqual(fmt(null), '—');
+assert.strictEqual(ymdToLabel('20260529'), '5/29');
+assert.strictEqual(ymdToLabel('20260505'), '5/5');
+assert.strictEqual(heatPct(50, 200), 25);
+assert.strictEqual(heatPct(10, 0), 0);
+console.log('OK: format helpers');

@@ -27,12 +27,12 @@ export default function BannerView() {
   if (loading && !data) {
     return (
       <div className="p-12 text-center text-gray-400 text-sm">
-        <div className="inline-flex items-center gap-2"><div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />バナー実績を読み込み中…</div>
+        <div className="inline-flex items-center gap-2"><div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />バナイベ実績を読み込み中…</div>
       </div>
     )
   }
   if (!data || data.weeks.length === 0) {
-    return <div className="p-12 text-center text-gray-400 text-sm">バナー実績データがありません</div>
+    return <div className="p-12 text-center text-gray-400 text-sm">バナイベ実績データがありません</div>
   }
 
   const labels = activeOnly ? data.byLabel.filter(e => e.totalPt > 0) : data.byLabel
@@ -60,8 +60,8 @@ export default function BannerView() {
       </div>
 
       <BannerKpiHeader summary={data.summary} />
-      <BannerMatrix title="① 個社別 — 週別バナー実績" subtitle="pt合計の降順。🏅＝入賞数（100位以内）。バー＝pt合計のヒート。名前下＝4週pt推移。" entities={data.byOrg} weeks={data.weeks} />
-      <BannerMatrix title="② レーベル別 — 週別バナー実績" subtitle="レーベル単位の戦闘力。指標は個社別と同じ。" entities={labels} weeks={data.weeks} />
+      <BannerMatrix title="① 個社別 — 週別バナイベ実績" subtitle="pt合計の降順。🏅＝入賞数（100位以内）。バー＝pt合計のヒート。名前下＝4週pt推移。" entities={data.byOrg} weeks={data.weeks} />
+      <BannerMatrix title="② レーベル別 — 週別バナイベ実績" subtitle="レーベル単位の戦闘力。指標は個社別と同じ。" entities={labels} weeks={data.weeks} />
       <BannerLiverTable livers={data.byLiver} weeks={data.weeks} />
     </div>
   )

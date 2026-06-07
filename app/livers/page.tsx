@@ -315,7 +315,7 @@ export default function LiversPage() {
 
         {/* ビュー切替タブ */}
         <div className="inline-flex bg-gray-100 rounded-lg p-1 mb-6">
-          {([['livers','① ライバー基盤'],['banners','② バナー実績']] as const).map(([key,label]) => (
+          {([['livers','① ライバー基盤'],['banners','② バナイベ実績']] as const).map(([key,label]) => (
             <button
               key={key}
               onClick={() => setView(key)}

@@ -16,6 +16,7 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
     .sort((a, b) => (b.c.pt - a.c.pt) || ((a.c.rank || 9999) - (b.c.rank || 9999)))
 
   const top100 = participants.filter(x => x.c.rank >= 1 && x.c.rank <= TOP).length
+  const noEventN = participants.filter(x => x.c.noEvent).length
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
@@ -46,6 +47,7 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
         {ymdToLabel(selWeek)} の参加：<span className="font-bold text-gray-800">{participants.length}名</span>
         <span className="mx-2 text-gray-200">|</span>
         100位以内：<span className="font-bold text-amber-600">{top100}名</span>
+        {noEventN > 0 && <><span className="mx-2 text-gray-200">|</span><span className="text-orange-600">※イベントID未設定 <b>{noEventN}名</b>（最新回に表示）</span></>}
       </div>
 
       {participants.length === 0 ? (
@@ -71,7 +73,7 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
                 >
                   <td className="px-4 py-2 text-right text-gray-400 tabular-nums">{i + 1}</td>
                   <td className="px-3 py-2 font-medium text-gray-900 max-w-[240px] truncate" title={l.name}>
-                    {inTop && <span className="text-amber-500 mr-1">●</span>}{l.name}
+                    {inTop && <span className="text-amber-500 mr-1">●</span>}{l.name}{c.noEvent && <span className="ml-1 text-[9px] text-orange-500 font-semibold">※未設定</span>}
                   </td>
                   <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
                     <span className="text-gray-600">{l.office}</span>

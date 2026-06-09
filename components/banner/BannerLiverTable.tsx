@@ -30,13 +30,13 @@ export default function BannerLiverTable({ livers, weeks }: { livers: BannerLive
           </p>
         </div>
         <div className="ml-auto inline-flex bg-gray-100 rounded-lg p-1">
-          {weeks.map(w => (
+          {weeks.map((w, i) => (
             <button
               key={w}
               onClick={() => setSelWeek(w)}
               className={`px-3 py-1 rounded-md text-xs font-medium transition ${w === selWeek ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              {ymdToLabel(w)}
+              {ymdToLabel(w)}{i === 0 && <span className="ml-0.5 text-[9px] text-blue-500 font-semibold">基準</span>}
             </button>
           ))}
         </div>

@@ -51,6 +51,7 @@ export default function BannerView() {
             <option key={w} value={w}>{ymdToLabel(w)}（{w}）</option>
           ))}
         </select>
+        <span className="text-[11px] text-gray-400">← 一覧の左端＝基準日（左ほど新しい回）</span>
         <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none ml-2">
           <input type="checkbox" checked={activeOnly} onChange={e => setActiveOnly(e.target.checked)} className="rounded" />
           実績ありのレーベルのみ

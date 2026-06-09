@@ -16,6 +16,7 @@ export type BannerLiverWeek = {
   pt: number
   win: boolean
   joined?: boolean   // 新GASでは常に付与。旧版互換のため任意。
+  noEvent?: boolean  // EventId未設定の行（最新回に表示）
 }
 export type BannerLiver = {
   name: string
@@ -60,4 +61,5 @@ export type BannerData = {
   byLiver: BannerLiver[]
   events?: BannerEvent[]
   summary: BannerSummary | null
+  noEventCount?: number
 }

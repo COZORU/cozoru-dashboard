@@ -24,8 +24,11 @@ function Spark({ values }: { values: number[] }) {
 }
 
 export default function BannerMatrix({
-  title, subtitle, entities, weeks,
-}: { title: string; subtitle: string; entities: BannerEntity[]; weeks: string[] }) {
+  title, subtitle, entities, weeks, labelFn = ymdToLabel, baseBadge = '基準日',
+}: {
+  title: string; subtitle: string; entities: BannerEntity[]; weeks: string[]
+  labelFn?: (p: string) => string; baseBadge?: string
+}) {
   const sectionMax = Math.max(1, ...entities.flatMap(e => e.weekly.map(w => w.ptSum)))
   const cornerLabel = title.replace(/^[①②③]\s*/, '').replace(/\s*—.*$/, '')
   return (
@@ -40,7 +43,7 @@ export default function BannerMatrix({
             <tr>
               <th rowSpan={2} className="sticky left-0 bg-white text-left font-semibold text-slate-600 px-3 py-2 border-r border-gray-100 z-20 min-w-[150px]">{cornerLabel}</th>
               {weeks.map((w, i) => (
-                <th key={w} colSpan={4} className={`text-center font-bold px-2 py-1.5 ${WEEK_BAND[i % 4]} ${i === 0 ? 'ring-2 ring-inset ring-blue-400' : ''}`}>{ymdToLabel(w)}{i === 0 && <span className="ml-1 align-middle text-[9px] font-bold text-white bg-blue-500 px-1 py-0.5 rounded">基準日</span>}</th>
+                <th key={w} colSpan={4} className={`text-center font-bold px-2 py-1.5 ${WEEK_BAND[i % 4]} ${i === 0 ? 'ring-2 ring-inset ring-blue-400' : ''}`}>{labelFn(w)}{i === 0 && <span className="ml-1 align-middle text-[9px] font-bold text-white bg-blue-500 px-1 py-0.5 rounded">{baseBadge}</span>}</th>
               ))}
             </tr>
             <tr className="text-slate-400 text-[10px] bg-slate-50">

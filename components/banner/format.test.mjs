@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { fmt, ymdToLabel, heatPct } from './format.ts';
+import { fmt, ymdToLabel, heatPct, ymToLabel } from './format.ts';
 assert.strictEqual(fmt(564781), '56.5万');
 assert.strictEqual(fmt(9800), '9,800');
 assert.strictEqual(fmt(null), '—');
@@ -7,4 +7,7 @@ assert.strictEqual(ymdToLabel('20260529'), '5/29');
 assert.strictEqual(ymdToLabel('20260505'), '5/5');
 assert.strictEqual(heatPct(50, 200), 25);
 assert.strictEqual(heatPct(10, 0), 0);
+assert.strictEqual(ymToLabel('202606'), '2026/6');
+assert.strictEqual(ymToLabel('202512'), '2025/12');
+assert.strictEqual(ymToLabel(''), '');
 console.log('OK: format helpers');

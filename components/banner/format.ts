@@ -12,3 +12,7 @@ export function heatPct(v: number, max: number): number {
   if (!max || max <= 0) return 0
   return Math.round((v / max) * 100)
 }
+export function ymToLabel(ym: string): string {
+  if (!ym || ym.length < 6) return ym || ''
+  return `${ym.substring(0, 4)}/${parseInt(ym.substring(4, 6), 10)}`
+}

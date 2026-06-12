@@ -8,8 +8,9 @@ export async function GET(req: Request) {
   const action = searchParams.get('action') || 'all'
   const month  = searchParams.get('month') || ''
   const base   = searchParams.get('base')  || ''
+  const basem  = searchParams.get('basem') || ''
 
-  const url = `${gasUrl}?action=${action}&month=${month}&base=${base}`
+  const url = `${gasUrl}?action=${action}&month=${month}&base=${base}&basem=${basem}`
   const res = await fetch(url, { next: { revalidate: 60 } }) // 1分キャッシュ
   const json = await res.json()
 

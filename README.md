@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# cozoru 経営ダッシュボード
 
-## Getting Started
+uyet社グループ3事務所（cozoru / ライブナウV / Tolance）のIRIAMライバー事業の経営KPIを自動集計・可視化するシステム。
 
-First, run the development server:
+- 本番: https://cozoru-dashboard.vercel.app （パスワード認証）
+- **引き継ぎ資料・システムドキュメント: [docs/handover/00_overview.md](docs/handover/00_overview.md) から読む**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 全体像（5行版）
+
+```
+iriam CSV（月6枚・手動投入）→ Drive → GAS自動取込 → スプシ（RAW + Sheets関数で集計）
+                                          ├→ スプシ「経営指標」PL（個社別）＝メイン帳票
+                                          └→ GAS WebApp API（JSON）→ このリポジトリ（Next.js on Vercel）
+バナイベ実績は OMNIAスプシ → IMPORTRANGE で自動連携（手作業なし）
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## クイックスタート（ローカル開発）
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm i
+# .env.local を作成: GAS_API_URL=<GAS exec URL（Vercel環境変数と同じ値）>
+npm run dev   # http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+詳細は [docs/handover/01_frontend.md](docs/handover/01_frontend.md)。
 
-## Learn More
+## リポジトリ構成
 
-To learn more about Next.js, take a look at the following resources:
+| ディレクトリ | 内容 |
+|---|---|
+| `app/` | Next.js App Router（ページ・/api/data GASプロキシ・認証） |
+| `components/` | UI部品（`banner/` = バナイベ実績タブ一式） |
+| `gas/` | **GASソースのミラー（編集の起点）**。開発フロー: [gas/README.md](gas/README.md) |
+| `tools/` | バナイベ集計のテスト・検証スクリプト（Node.js） |
+| `docs/handover/` | 引き継ぎ資料一式（00〜07 + KPI定義書） |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## デプロイ
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **フロント**: main へ push → Vercel 自動デプロイ
+- **GAS**: `gas/` を編集 → clasp push → Webアプリ再デプロイ（**「新バージョン」選択必須**）。手順: [docs/handover/02_gas.md](docs/handover/02_gas.md)
 
-## Deploy on Vercel
+## テスト
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+node components/banner/format.test.mjs
+node tools/test_banner_aggregate.mjs
+node tools/test_gas_banner_sync.mjs   # GASとNodeの集計ロジック一致を機械検証
+```

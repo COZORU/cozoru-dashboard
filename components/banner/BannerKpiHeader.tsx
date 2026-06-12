@@ -1,7 +1,7 @@
 import { type BannerSummary } from './types'
 import { fmt, ymdToLabel } from './format'
 
-function Delta({ cur, prev, suffix = '' }: { cur: number; prev: number | undefined; suffix?: string }) {
+export function Delta({ cur, prev, suffix = '' }: { cur: number; prev: number | undefined; suffix?: string }) {
   if (prev === undefined || prev === null) return null
   const d = cur - prev
   if (d === 0) return <span className="text-[10px] text-gray-400">±0{suffix}</span>

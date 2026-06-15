@@ -23,6 +23,7 @@ type Props = {
   flows?: Record<string, Flow>   // 月→{流入,流出}（登録ベース・全社）
   height?: number
   info?: ReactNode
+  bare?: boolean
 }
 
 const C_ACT = '#0097a7'        // アクティブ（濃）
@@ -33,12 +34,12 @@ const C_OUT = '#d84315'        // 流出
 
 export default function LiverOverviewChart({
   title = '所属ライバー内訳＋流入/流出（全社）',
-  active, inactive, activeForecast, inactiveForecast, flows, height = 240, info
+  active, inactive, activeForecast, inactiveForecast, flows, height = 240, info, bare
 }: Props) {
   const map: Record<string, Row> = {}
   const set = (mo: string, k: keyof Row, v: number) => {
     if (!map[mo]) map[mo] = { month: mo }
-    ;(map[mo] as Record<string, number | string>)[k] = v
+    ;(map[mo] as Record<string, number | string | boolean | undefined>)[k] = v
   }
   active.forEach(p => set(p.month, 'active', p.value))
   inactive.forEach(p => set(p.month, 'inactive', p.value))
@@ -103,10 +104,10 @@ export default function LiverOverviewChart({
     )
   }
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+  const body = (
+    <>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-gray-700">{title}</span>
+        {!bare && <span className="text-xs font-bold text-gray-700">{title}</span>}
         {info && (
           <div className="relative group">
             <button className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 text-[9px] flex items-center justify-center flex-shrink-0 hover:border-blue-400 hover:text-blue-500 cursor-help">?</button>
@@ -134,15 +135,17 @@ export default function LiverOverviewChart({
           {hasFc && firstFc && <ReferenceLine x={firstFc.month} stroke="#cbd5e1" strokeDasharray="4 3" />}
           <Bar dataKey="active" name="アクティブ" stackId="livers" fill={C_ACT} isAnimationActive={false}>
             {rows.map((r, i) => <Cell key={i} fillOpacity={r.forecast ? 0.45 : 1} />)}
-            <LabelList content={segLabel('active', 'activePct', '#ffffff', C_INACT_TXT)} />
+            <LabelList content={segLabel('active', 'activePct', '#ffffff', C_INACT_TXT) as never} />
           </Bar>
           <Bar dataKey="inactive" name="非アクティブ" stackId="livers" fill={C_INACT} isAnimationActive={false}>
             {rows.map((r, i) => <Cell key={i} fillOpacity={r.forecast ? 0.55 : 1} />)}
-            <LabelList content={segLabel('inactive', 'inactivePct', C_INACT_TXT, C_INACT_TXT)} />
-            <LabelList content={totalLabel} />
+            <LabelList content={segLabel('inactive', 'inactivePct', C_INACT_TXT, C_INACT_TXT) as never} />
+            <LabelList content={totalLabel as never} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </>
   )
+  if (bare) return body
+  return <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">{body}</div>
 }

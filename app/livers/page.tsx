@@ -1,9 +1,14 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import Sidebar from '@/components/Sidebar'
-import ChartSection from '@/components/ChartSection'
+import dynamic from 'next/dynamic'
+import LiverOverviewChart from '@/components/LiverOverviewChart'
+import LiverFlowChart from '@/components/LiverFlowChart'
+import { buildOutflowForecast } from '@/lib/liverForecast'
 import BannerView from '@/components/banner/BannerView'
 import { type SummaryData, LiverSection } from '@/components/FinanceDashboardClient'
+
+const TrendForecastChart = dynamic(() => import('@/components/TrendForecastChart'), { ssr: false })
 
 // ─── Types ───────────────────────────────────────────────────
 type Liver = {
@@ -15,6 +20,7 @@ type Liver = {
   debutMonth: string; prevFc1: number
 }
 type ApiData = { months: string[]; latestMonth: string; livers: Liver[] }
+type FullPLData = { trend?: { month: string; dia?: number; active?: number }[]; monthly?: Record<string, number>[] }
 
 // ─── Constants ───────────────────────────────────────────────
 const RANK_ORD: Record<string, number> = {
@@ -42,6 +48,12 @@ function monthDiff(a: string, b: string) {
   const [ay,am] = a.split('-').map(Number)
   const [by,bm] = b.split('-').map(Number)
   return (by-ay)*12 + (bm-am)
+}
+function shiftMonth(ym: string, d: number) {
+  const p = ym.split('-').map(Number); let y = p[0] || 0, mm = (p[1] || 1) + d
+  while (mm < 1) { mm += 12; y-- }
+  while (mm > 12) { mm -= 12; y++ }
+  return `${y}-${String(mm).padStart(2, '0')}`
 }
 
 // ─── Sub-components ──────────────────────────────────────────
@@ -278,6 +290,9 @@ export default function LiversPage() {
   const [rankBand, setRankBand]   = useState('ALL')
   const [alertOnly, setAlertOnly] = useState(false)
   const [chartData, setChartData] = useState<SummaryData|null>(null)
+  const [plData, setPlData] = useState<FullPLData|null>(null)
+  const [flowArr, setFlowArr] = useState<{ month: string; registered: number; inflow: number; outflow: number }[]>([])
+  const [rightTab, setRightTab] = useState<'roster' | 'flow'>('roster')
 
   useEffect(() => {
     const url = month ? `/api/data?action=livers&month=${month}` : '/api/data?action=livers'
@@ -300,7 +315,109 @@ export default function LiversPage() {
       .catch(() => {})
   }, [])
 
+  // PL(全社) の所属/アクティブ/非アクティブ（実績＋計画）を取得
+  useEffect(() => {
+    fetch('/api/data?action=fullpl')
+      .then(r => r.json())
+      .then(j => {
+        if (j.status === 'ok' && j.data?.fullpl) setPlData(j.data.fullpl)
+      })
+      .catch(() => {})
+  }, [])
+
+  // 登録数・流入・流出（RAW算出）を取得して全社の流入/流出を月別マップに
+  useEffect(() => {
+    fetch('/api/data?action=liverflow')
+      .then(r => r.json())
+      .then(j => {
+        const all = j?.data?.liverflow?.flows?.['__ALL__']
+        if (Array.isArray(all)) {
+          setFlowArr(all as { month: string; registered: number; inflow: number; outflow: number }[])
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const allLivers = useMemo(()=>data?.livers||[], [data])
+
+  // 既存グラフに重ねる実績系列（基準月の過去3か月〜基準月）を PL(全社) から構築。dia/active も同ソースで揃える
+  const liverSeries = useMemo(() => {
+    const t = plData?.trend, m = plData?.monthly
+    if (!Array.isArray(t) || !Array.isArray(m)) return null
+    let base = ''
+    for (let i = 0; i < t.length; i++) { const r = m[i] || {}; if ((r.registered || 0) > 0 && t[i]?.month) base = t[i].month }
+    if (!base) return null
+    const winStart = shiftMonth(base, -3)   // 基準月の3か月前
+    const diaActual: {month:string;value:number}[] = []
+    const actActual: {month:string;value:number}[] = []
+    const regActual: {month:string;value:number}[] = []
+    const actRateActual: {month:string;value:number}[] = []
+    const inactiveActual: {month:string;value:number}[] = []
+    const debutActual: {month:string;value:number}[] = []
+    for (let i = 0; i < t.length; i++) {
+      const mo = t[i]?.month
+      if (!mo || mo < winStart || mo > base) continue
+      const r = m[i] || {}
+      const dia = t[i]?.dia || 0, act = r.active || 0, reg = r.registered || 0
+      if (dia > 0) diaActual.push({ month: mo, value: dia })
+      if (act > 0) actActual.push({ month: mo, value: act })
+      const dbt = r.debut || 0
+      if (dbt > 0) debutActual.push({ month: mo, value: dbt })
+      if (reg > 0) {
+        regActual.push({ month: mo, value: reg })
+        inactiveActual.push({ month: mo, value: reg - act })
+        if (act > 0) actRateActual.push({ month: mo, value: Math.round(act / reg * 1000) / 10 })
+      }
+    }
+    return { base, diaActual, actActual, regActual, actRateActual, inactiveActual, debutActual }
+  }, [plData])
+
+  // 所属チャート用の3か月予測。アクティブ＝summary.activeForecast（＝直近3か月の実績の移動平均。
+  // 応援ダイヤ予測と同ロジック）。非アクティブも同じ「直近3か月の移動平均」で揃える。所属計＝両者の和。
+  const liverForecast = useMemo(() => {
+    if (!liverSeries) return null
+    const base = liverSeries.base
+    const horizon = shiftMonth(base, 3)
+    const activeForecast = (chartData?.activeForecast || [])
+      .filter(f => f.month > base && f.month <= horizon)
+      .map(f => ({ month: f.month, value: Math.round(f.active) }))
+    if (activeForecast.length === 0) return null
+    // 非アクティブ：直近3か月の実績の平均（移動平均）。予測値も順次平均に組み込む＝アクティブと同方式。
+    const series = liverSeries.inactiveActual.map(p => p.value)
+    const inactiveForecast = activeForecast.map(f => {
+      const last3 = series.slice(-3)
+      const avg = last3.length ? Math.round(last3.reduce((a, b) => a + b, 0) / last3.length) : 0
+      series.push(avg)
+      return { month: f.month, value: avg }
+    })
+    return { activeForecast, inactiveForecast }
+  }, [liverSeries, chartData])
+
+  // 流入・流出タブ用：表示窓（基準月の3か月前〜基準月）の実績
+  const flowSeries = useMemo(() => {
+    if (!liverSeries || flowArr.length === 0) return null
+    const base = liverSeries.base
+    const winStart = shiftMonth(base, -3)
+    const win = flowArr.filter(x => x.month >= winStart && x.month <= base && x.outflow >= 0)
+    return {
+      inflow: win.map(x => ({ month: x.month, value: x.inflow })),
+      outflow: win.map(x => ({ month: x.month, value: x.outflow })),
+    }
+  }, [liverSeries, flowArr])
+
+  // 流出予測（退会率ベース）。退会率は直近5か月（基準月−4〜基準月）から算出。
+  const outflowForecast = useMemo(() => {
+    if (!liverSeries || !liverForecast || flowArr.length === 0) return []
+    const base = liverSeries.base
+    const start = shiftMonth(base, -4)
+    const recent = flowArr.filter(x => x.month >= start && x.month <= base)
+    const rosterForecast = liverForecast.activeForecast.map((a, i) => ({
+      month: a.month,
+      registered: a.value + (liverForecast.inactiveForecast[i]?.value || 0),
+    }))
+    const lastReg = liverSeries.regActual.slice(-1)[0]?.value || 0
+    return buildOutflowForecast(recent, rosterForecast, lastReg)
+  }, [liverSeries, liverForecast, flowArr])
 
   const livers = useMemo(()=>allLivers.filter(l => {
     if (tier!=='ALL' && l.tier!==tier) return false
@@ -345,23 +462,71 @@ export default function LiversPage() {
         {/* グラフセクション */}
         <div className="mb-8">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
-          {chartData ? (
-            <ChartSection
-              diaActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.dia }))}
-              diaForecast={(chartData.diaForecast || []).map(f => ({ month: f.month, value: f.dia }))}
-              actActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.active }))}
-              actForecast={(chartData.activeForecast || []).map(f => ({ month: f.month, value: f.active }))}
-            />
-          ) : (
+          {liverSeries ? (
             <div className="grid grid-cols-2 gap-4">
-              {[1,2].map(i => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[240px] flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-gray-300 text-xs">
-                    <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-                    グラフ読み込み中…
-                  </div>
+              <TrendForecastChart
+                title="応援ダイヤ（全社）"
+                color="#43a047"
+                actual={liverSeries.diaActual}
+                forecast={(chartData?.diaForecast || []).map(f => ({ month: f.month, value: f.dia })).filter(p => p.month <= shiftMonth(liverSeries.base, 3))}
+                fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
+                height={220}
+              />
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                <div className="inline-flex bg-gray-100 rounded-lg p-1 mb-3">
+                  {([['roster', '所属ライバー（内訳）'], ['flow', '流入・流出']] as const).map(([k, label]) => (
+                    <button key={k} onClick={() => setRightTab(k)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition ${rightTab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              ))}
+                {rightTab === 'roster' ? (
+                  <LiverOverviewChart
+                    bare
+                    active={liverSeries.actActual}
+                    inactive={liverSeries.inactiveActual}
+                    activeForecast={liverForecast?.activeForecast}
+                    inactiveForecast={liverForecast?.inactiveForecast}
+                    height={210}
+                    info={<>
+                      <b className="text-gray-800">3か月予測の算出方法</b>
+                      <p className="mt-1 leading-relaxed"><b>直近3か月の実績の平均（移動平均）</b>で先の月を推定。増加率ではありません。</p>
+                      <ul className="mt-1.5 list-disc pl-4 space-y-0.5">
+                        <li>アクティブ／非アクティブ：それぞれ移動平均で延長</li>
+                        <li>所属計：アクティブ＋非アクティブ</li>
+                      </ul>
+                    </>}
+                  />
+                ) : (
+                  <LiverFlowChart
+                    bare
+                    inflow={flowSeries?.inflow || []}
+                    outflow={flowSeries?.outflow || []}
+                    outflowForecast={outflowForecast}
+                    debut={liverSeries.debutActual}
+                    height={210}
+                    info={<>
+                      <b className="text-gray-800">流入・流出と予測</b>
+                      <p className="mt-1 leading-relaxed">流入＝今月新しく名簿入りした人、流出＝今月名簿から外れた人。<b>所属の増減＝流入−流出</b>。</p>
+                      <ul className="mt-1.5 list-disc pl-4 space-y-0.5">
+                        <li>流出予測：退会率（流出÷前月所属）の直近中央値 ×（予測の前月所属）</li>
+                        <li>デビューは参考の折れ線（実際の名簿増＝流入とは別）</li>
+                      </ul>
+                    </>}
+                  />
+                )}
+                <p className="mt-2 text-[10px] text-gray-400 leading-relaxed">
+                  予測の算出：所属（アクティブ／非アクティブ）＝直近3か月の移動平均。当月流出＝退会率（流出÷前月所属）の直近の中央値 ×（予測の前月所属）。4月のような一時的な大量流出（異常値）は中央値を用いることで自動的に除外。デビューは参考値で、実際の名簿増＝流入とは別。
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[340px] flex items-center justify-center">
+              <div className="flex items-center gap-2 text-gray-300 text-xs">
+                <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                グラフ読み込み中…
+              </div>
             </div>
           )}
         </div>

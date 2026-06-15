@@ -1,9 +1,12 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import Sidebar from '@/components/Sidebar'
-import ChartSection from '@/components/ChartSection'
+import dynamic from 'next/dynamic'
+import LiverOverviewChart from '@/components/LiverOverviewChart'
 import BannerView from '@/components/banner/BannerView'
 import { type SummaryData, LiverSection } from '@/components/FinanceDashboardClient'
+
+const TrendForecastChart = dynamic(() => import('@/components/TrendForecastChart'), { ssr: false })
 
 // ─── Types ───────────────────────────────────────────────────
 type Liver = {
@@ -15,6 +18,7 @@ type Liver = {
   debutMonth: string; prevFc1: number
 }
 type ApiData = { months: string[]; latestMonth: string; livers: Liver[] }
+type FullPLData = { trend?: { month: string; dia?: number; active?: number }[]; monthly?: Record<string, number>[] }
 
 // ─── Constants ───────────────────────────────────────────────
 const RANK_ORD: Record<string, number> = {
@@ -42,6 +46,12 @@ function monthDiff(a: string, b: string) {
   const [ay,am] = a.split('-').map(Number)
   const [by,bm] = b.split('-').map(Number)
   return (by-ay)*12 + (bm-am)
+}
+function shiftMonth(ym: string, d: number) {
+  const p = ym.split('-').map(Number); let y = p[0] || 0, mm = (p[1] || 1) + d
+  while (mm < 1) { mm += 12; y-- }
+  while (mm > 12) { mm -= 12; y++ }
+  return `${y}-${String(mm).padStart(2, '0')}`
 }
 
 // ─── Sub-components ──────────────────────────────────────────
@@ -278,6 +288,8 @@ export default function LiversPage() {
   const [rankBand, setRankBand]   = useState('ALL')
   const [alertOnly, setAlertOnly] = useState(false)
   const [chartData, setChartData] = useState<SummaryData|null>(null)
+  const [plData, setPlData] = useState<FullPLData|null>(null)
+  const [flowMap, setFlowMap] = useState<Record<string, { inflow: number; outflow: number }>>({})
 
   useEffect(() => {
     const url = month ? `/api/data?action=livers&month=${month}` : '/api/data?action=livers'
@@ -300,7 +312,84 @@ export default function LiversPage() {
       .catch(() => {})
   }, [])
 
+  // PL(全社) の所属/アクティブ/非アクティブ（実績＋計画）を取得
+  useEffect(() => {
+    fetch('/api/data?action=fullpl')
+      .then(r => r.json())
+      .then(j => {
+        if (j.status === 'ok' && j.data?.fullpl) setPlData(j.data.fullpl)
+      })
+      .catch(() => {})
+  }, [])
+
+  // 登録数・流入・流出（RAW算出）を取得して全社の流入/流出を月別マップに
+  useEffect(() => {
+    fetch('/api/data?action=liverflow')
+      .then(r => r.json())
+      .then(j => {
+        const all = j?.data?.liverflow?.flows?.['__ALL__']
+        if (Array.isArray(all)) {
+          const m: Record<string, { inflow: number; outflow: number }> = {}
+          all.forEach((x: { month: string; inflow: number; outflow: number }) => {
+            m[x.month] = { inflow: x.inflow, outflow: x.outflow }
+          })
+          setFlowMap(m)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const allLivers = useMemo(()=>data?.livers||[], [data])
+
+  // 既存グラフに重ねる実績系列（基準月の過去3か月〜基準月）を PL(全社) から構築。dia/active も同ソースで揃える
+  const liverSeries = useMemo(() => {
+    const t = plData?.trend, m = plData?.monthly
+    if (!Array.isArray(t) || !Array.isArray(m)) return null
+    let base = ''
+    for (let i = 0; i < t.length; i++) { const r = m[i] || {}; if ((r.registered || 0) > 0 && t[i]?.month) base = t[i].month }
+    if (!base) return null
+    const winStart = shiftMonth(base, -3)   // 基準月の3か月前
+    const diaActual: {month:string;value:number}[] = []
+    const actActual: {month:string;value:number}[] = []
+    const regActual: {month:string;value:number}[] = []
+    const actRateActual: {month:string;value:number}[] = []
+    const inactiveActual: {month:string;value:number}[] = []
+    for (let i = 0; i < t.length; i++) {
+      const mo = t[i]?.month
+      if (!mo || mo < winStart || mo > base) continue
+      const r = m[i] || {}
+      const dia = t[i]?.dia || 0, act = r.active || 0, reg = r.registered || 0
+      if (dia > 0) diaActual.push({ month: mo, value: dia })
+      if (act > 0) actActual.push({ month: mo, value: act })
+      if (reg > 0) {
+        regActual.push({ month: mo, value: reg })
+        inactiveActual.push({ month: mo, value: reg - act })
+        if (act > 0) actRateActual.push({ month: mo, value: Math.round(act / reg * 1000) / 10 })
+      }
+    }
+    return { base, diaActual, actActual, regActual, actRateActual, inactiveActual }
+  }, [plData])
+
+  // 所属チャート用の3か月予測。アクティブ＝summary.activeForecast（＝直近3か月の実績の移動平均。
+  // 応援ダイヤ予測と同ロジック）。非アクティブも同じ「直近3か月の移動平均」で揃える。所属計＝両者の和。
+  const liverForecast = useMemo(() => {
+    if (!liverSeries) return null
+    const base = liverSeries.base
+    const horizon = shiftMonth(base, 3)
+    const activeForecast = (chartData?.activeForecast || [])
+      .filter(f => f.month > base && f.month <= horizon)
+      .map(f => ({ month: f.month, value: Math.round(f.active) }))
+    if (activeForecast.length === 0) return null
+    // 非アクティブ：直近3か月の実績の平均（移動平均）。予測値も順次平均に組み込む＝アクティブと同方式。
+    const series = liverSeries.inactiveActual.map(p => p.value)
+    const inactiveForecast = activeForecast.map(f => {
+      const last3 = series.slice(-3)
+      const avg = last3.length ? Math.round(last3.reduce((a, b) => a + b, 0) / last3.length) : 0
+      series.push(avg)
+      return { month: f.month, value: avg }
+    })
+    return { activeForecast, inactiveForecast }
+  }, [liverSeries, chartData])
 
   const livers = useMemo(()=>allLivers.filter(l => {
     if (tier!=='ALL' && l.tier!==tier) return false
@@ -345,23 +434,41 @@ export default function LiversPage() {
         {/* グラフセクション */}
         <div className="mb-8">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">トレンド ＆ 3ヶ月予測</p>
-          {chartData ? (
-            <ChartSection
-              diaActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.dia }))}
-              diaForecast={(chartData.diaForecast || []).map(f => ({ month: f.month, value: f.dia }))}
-              actActual={(chartData.trend || []).map(t => ({ month: t.month, value: t.active }))}
-              actForecast={(chartData.activeForecast || []).map(f => ({ month: f.month, value: f.active }))}
-            />
-          ) : (
+          {liverSeries ? (
             <div className="grid grid-cols-2 gap-4">
-              {[1,2].map(i => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[240px] flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-gray-300 text-xs">
-                    <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-                    グラフ読み込み中…
-                  </div>
-                </div>
-              ))}
+              <TrendForecastChart
+                title="応援ダイヤ（全社）"
+                color="#43a047"
+                actual={liverSeries.diaActual}
+                forecast={(chartData?.diaForecast || []).map(f => ({ month: f.month, value: f.dia })).filter(p => p.month <= shiftMonth(liverSeries.base, 3))}
+                fmt={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()}
+                height={220}
+              />
+              <LiverOverviewChart
+                active={liverSeries.actActual}
+                inactive={liverSeries.inactiveActual}
+                activeForecast={liverForecast?.activeForecast}
+                inactiveForecast={liverForecast?.inactiveForecast}
+                flows={flowMap}
+                height={220}
+                info={<>
+                  <b className="text-gray-800">3か月予測の算出方法</b>
+                  <p className="mt-1 leading-relaxed"><b>直近3か月の実績の平均（移動平均）</b>で先の月を推定します。増加率ではありません。</p>
+                  <ul className="mt-1.5 list-disc pl-4 space-y-0.5">
+                    <li>アクティブ：既存の「アクティブライバー数予測」と同じ算出</li>
+                    <li>非アクティブ：同じ方法で延長</li>
+                    <li>所属計：アクティブ＋非アクティブの合計</li>
+                  </ul>
+                  <p className="mt-1.5 text-gray-400">例）6月＝(3月+4月+5月の実績)÷3。成長施策・イベント効果は織り込まない素朴な見込み値です。</p>
+                </>}
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-[340px] flex items-center justify-center">
+              <div className="flex items-center gap-2 text-gray-300 text-xs">
+                <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                グラフ読み込み中…
+              </div>
             </div>
           )}
         </div>

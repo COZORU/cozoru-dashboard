@@ -114,7 +114,7 @@ export default function BannerView() {
       {showMonthly && monthly ? (
         <>
           <BannerMonthlyKpiHeader summary={monthly.summary} />
-          <BannerMonthlyTrend trend={monthly.trend} />
+          <BannerMonthlyTrend trend={monthly.trend} months={monthly.months} />
           <BannerMatrix
             title="① 個社別 — 月次バナイベ実績"
             subtitle="pt合計の降順。「100位内」＝のべ100位以内回数。「参加」＝のべ参加。バー＝pt合計のヒート。名前下＝月次pt推移。"

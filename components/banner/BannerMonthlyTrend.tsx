@@ -5,13 +5,17 @@ import { ymToLabel, fmt } from './format'
 
 const fmtTick = (v: number) => (v >= 10000 ? `${Math.round(v / 10000)}万` : v.toLocaleString())
 
-export default function BannerMonthlyTrend({ trend }: { trend: BannerTrendPoint[] }) {
-  if (!trend || trend.length < 2) return null
-  const data = trend.map(t => ({ ...t, label: ymToLabel(t.month) }))
+export default function BannerMonthlyTrend({ trend, months }: { trend: BannerTrendPoint[]; months?: string[] }) {
+  // 個社別マトリクスと同じ「基準月＋過去5ヶ月＝直近6ヶ月」窓に揃える。
+  // months は新しい順、trend は昇順。trend 側の並び（昇順）を保ったまま窓内だけに絞り込む。
+  const allow = months && months.length ? new Set(months) : null
+  const scoped = trend && allow ? trend.filter(t => allow.has(t.month)) : (trend || [])
+  if (scoped.length < 2) return null
+  const data = scoped.map(t => ({ ...t, label: ymToLabel(t.month) }))
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <h3 className="text-sm font-bold text-gray-800">参加・100位以内の月次推移（全期間）</h3>
+        <h3 className="text-sm font-bold text-gray-800">参加・100位以内の月次推移（直近6ヶ月）</h3>
         <p className="text-xs text-gray-400 mt-0.5 mb-2">薄棒＝のべ参加 / 濃棒＝100位以内 / 線＝100位以内率（右軸）</p>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
@@ -30,7 +34,7 @@ export default function BannerMonthlyTrend({ trend }: { trend: BannerTrendPoint[
         </div>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <h3 className="text-sm font-bold text-gray-800">応援ptの月次推移（全期間）</h3>
+        <h3 className="text-sm font-bold text-gray-800">応援ptの月次推移（直近6ヶ月）</h3>
         <p className="text-xs text-gray-400 mt-0.5 mb-2">棒＝pt合計 / 線＝参加者平均pt（右軸）</p>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">

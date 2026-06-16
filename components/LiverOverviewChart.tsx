@@ -118,8 +118,8 @@ export default function LiverOverviewChart({
       </div>
       {last && (
         <div className="flex items-center gap-x-4 gap-y-1 flex-wrap mb-2 text-xs">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: C_ACT }} />アクティブ <b style={{ color: C_ACT }}>{(last.active || 0).toLocaleString()}人（{last.activePct}%）</b></span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: C_INACT }} />非アクティブ <b className="text-gray-800">{(last.inactive || 0).toLocaleString()}人（{last.inactivePct}%）</b></span>
+          <span className="flex items-center gap-1 text-gray-700"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: C_ACT }} />アクティブ <b style={{ color: C_ACT }}>{(last.active || 0).toLocaleString()}人（{last.activePct}%）</b></span>
+          <span className="flex items-center gap-1 text-gray-700"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: C_INACT }} />非アクティブ <b className="text-gray-800">{(last.inactive || 0).toLocaleString()}人（{last.inactivePct}%）</b></span>
           <span className="text-gray-500">所属計 <b className="text-gray-700">{(last.total || 0).toLocaleString()}人</b></span>
           {last.inflow != null && <span className="text-gray-500">今月 <b style={{ color: C_IN }}>流入+{last.inflow}</b> / <b style={{ color: C_OUT }}>流出−{last.outflow}</b></span>}
           {lastFc && <span className="text-gray-500">→ 3か月後（{parseInt(lastFc.month.slice(5), 10)}月）予測 <b style={{ color: C_ACT }}>所属計 {(lastFc.total || 0).toLocaleString()}人</b></span>}
@@ -131,7 +131,7 @@ export default function LiverOverviewChart({
           <XAxis dataKey="month" tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 9 }} width={48} tickFormatter={(v: number) => v.toLocaleString()} />
           <Tooltip formatter={(v, name) => [typeof v === 'number' ? `${v.toLocaleString()} 人` : v as unknown as string, name as string]} labelFormatter={(l) => fcMonths.has(String(l)) ? `${l}（予測）` : String(l)} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => <span style={{ color: '#374151' }}>{value}</span>} />
           {hasFc && firstFc && <ReferenceLine x={firstFc.month} stroke="#cbd5e1" strokeDasharray="4 3" />}
           <Bar dataKey="active" name="アクティブ" stackId="livers" fill={C_ACT} isAnimationActive={false}>
             {rows.map((r, i) => <Cell key={i} fillOpacity={r.forecast ? 0.45 : 1} />)}

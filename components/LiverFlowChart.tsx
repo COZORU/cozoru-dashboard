@@ -20,6 +20,7 @@ type Props = {
   height?: number
   info?: ReactNode
   bare?: boolean
+  onSelectMonth?: (month: string) => void
 }
 
 const C_IN = '#1b9e77'
@@ -28,7 +29,7 @@ const C_OUT_FC = 'rgba(216,67,21,0.45)'
 const C_DEBUT = '#BA7517'
 
 export default function LiverFlowChart({
-  title = '流入・流出（全社）', inflow, outflow, outflowForecast, debut, height = 240, info, bare,
+  title = '流入・流出（全社）', inflow, outflow, outflowForecast, debut, height = 240, info, bare, onSelectMonth,
 }: Props) {
   const map: Record<string, Row> = {}
   const set = (mo: string, k: keyof Row, v: number) => {
@@ -73,7 +74,12 @@ export default function LiverFlowChart({
           <ReferenceLine y={0} stroke="#9e9e9e" />
           {firstFc && <ReferenceLine x={firstFc.month} stroke="#cbd5e1" strokeDasharray="4 3" />}
           <Bar dataKey="inflow" name="流入" fill={C_IN} isAnimationActive={false} />
-          <Bar dataKey="outflowNeg" name="流出" fill={C_OUT} isAnimationActive={false} />
+          <Bar dataKey="outflowNeg" name="流出" fill={C_OUT} isAnimationActive={false}
+            cursor={onSelectMonth ? 'pointer' : undefined}
+            onClick={(d: { month?: string; payload?: { month?: string } }) => {
+              const m = d?.month ?? d?.payload?.month
+              if (onSelectMonth && m) onSelectMonth(m)
+            }} />
           <Bar dataKey="outflowFcNeg" name="流出(予測)" fill={C_OUT_FC} isAnimationActive={false} />
           <Line dataKey="debut" name="デビュー(参考)" stroke={C_DEBUT} strokeDasharray="3 3" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={false} connectNulls />
         </ComposedChart>

@@ -4,6 +4,7 @@ import Sidebar from '@/components/Sidebar'
 import dynamic from 'next/dynamic'
 import LiverOverviewChart from '@/components/LiverOverviewChart'
 import LiverFlowChart from '@/components/LiverFlowChart'
+import ChurnDrawer, { type ChurnData } from '@/components/ChurnDrawer'
 import { buildOutflowForecast } from '@/lib/liverForecast'
 import BannerView from '@/components/banner/BannerView'
 import { type SummaryData, LiverSection } from '@/components/FinanceDashboardClient'
@@ -293,6 +294,9 @@ export default function LiversPage() {
   const [plData, setPlData] = useState<FullPLData|null>(null)
   const [flowArr, setFlowArr] = useState<{ month: string; registered: number; inflow: number; outflow: number }[]>([])
   const [rightTab, setRightTab] = useState<'roster' | 'flow'>('roster')
+  const [churnMonth, setChurnMonth] = useState<string | null>(null)
+  const [churnData, setChurnData] = useState<ChurnData | null>(null)
+  const [churnLoading, setChurnLoading] = useState(false)
 
   useEffect(() => {
     const url = month ? `/api/data?action=livers&month=${month}` : '/api/data?action=livers'
@@ -337,6 +341,16 @@ export default function LiversPage() {
       })
       .catch(() => {})
   }, [])
+
+  // 退会者ドリルダウン: 流出バークリックで選んだ月の退会者を取得
+  useEffect(() => {
+    if (!churnMonth) return
+    setChurnLoading(true); setChurnData(null)
+    fetch(`/api/data?action=churn&month=${churnMonth}`)
+      .then(r => r.json())
+      .then(j => { setChurnData(j?.data?.churn ?? null); setChurnLoading(false) })
+      .catch(() => setChurnLoading(false))
+  }, [churnMonth])
 
   const allLivers = useMemo(()=>data?.livers||[], [data])
 
@@ -501,6 +515,7 @@ export default function LiversPage() {
                 ) : (
                   <LiverFlowChart
                     bare
+                    onSelectMonth={setChurnMonth}
                     inflow={flowSeries?.inflow || []}
                     outflow={flowSeries?.outflow || []}
                     outflowForecast={outflowForecast}
@@ -663,6 +678,7 @@ export default function LiversPage() {
         </div>
         </>)}
         </main>
+        <ChurnDrawer month={churnMonth} data={churnData} loading={churnLoading} onClose={() => setChurnMonth(null)} />
     </div>
   )
 }

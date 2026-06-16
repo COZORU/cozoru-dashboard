@@ -44,7 +44,7 @@ export default function ChurnDrawer({
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-2xl h-full bg-white shadow-xl overflow-y-auto p-5">
+      <div className="relative w-full max-w-2xl h-full bg-white shadow-xl overflow-y-auto p-5 text-gray-800">
         <div className="flex items-center gap-3 mb-4">
           <h2 className="text-base font-bold text-gray-800">{month} の流出（退会）</h2>
           <span className="text-xs font-bold bg-red-50 text-red-700 px-2 py-0.5 rounded">{data?.count ?? 0}人</span>
@@ -60,15 +60,15 @@ export default function ChurnDrawer({
           <>
             <div className="grid grid-cols-3 gap-2 mb-4">
               <div className="bg-slate-50 rounded-lg p-3">
-                <div className="text-xs text-slate-500">退会人数</div>
+                <div className="text-xs text-slate-600">退会人数</div>
                 <div className="text-xl font-bold">{data.count}<span className="text-xs font-normal"> 人</span></div>
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
-                <div className="text-xs text-slate-500">失った応援ダイヤ</div>
+                <div className="text-xs text-slate-600">失った応援ダイヤ</div>
                 <div className="text-xl font-bold">{fmt(data.diaLostTotal)}</div>
               </div>
               <div className={`rounded-lg p-3 ${data.topTierCount > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
-                <div className={`text-xs ${data.topTierCount > 0 ? 'text-red-700' : 'text-slate-500'}`}>上位Tier(T1)退会</div>
+                <div className={`text-xs ${data.topTierCount > 0 ? 'text-red-700' : 'text-slate-600'}`}>上位Tier(T1)退会</div>
                 <div className={`text-xl font-bold ${data.topTierCount > 0 ? 'text-red-700' : ''}`}>{data.topTierCount}<span className="text-xs font-normal"> 人</span></div>
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function ChurnDrawer({
 
             <table className="w-full text-[13px] border-collapse">
               <thead>
-                <tr className="text-left text-xs text-slate-500 border-b border-gray-200">
+                <tr className="text-left text-xs text-slate-600 border-b border-gray-200">
                   <th className="py-2 pr-2">アカウント名</th>
                   <th className="py-2 pr-2">事務所</th>
                   <th className="py-2 pr-2">在籍</th>
@@ -96,10 +96,10 @@ export default function ChurnDrawer({
               <tbody>
                 {rows.map(r => (
                   <tr key={r.uid} className="border-b border-gray-100">
-                    <td className="py-2 pr-2 font-medium">{r.name}</td>
-                    <td className="py-2 pr-2 text-slate-500">{r.office}</td>
-                    <td className="py-2 pr-2 text-slate-500">{tenure(r.tenureMonths)}</td>
-                    <td className="py-2 pr-2 text-right font-medium">{fmt(r.dia)}</td>
+                    <td className="py-2 pr-2 font-medium text-gray-900">{r.name}</td>
+                    <td className="py-2 pr-2 text-slate-600">{r.office}</td>
+                    <td className="py-2 pr-2 text-slate-600">{tenure(r.tenureMonths)}</td>
+                    <td className="py-2 pr-2 text-right font-medium text-gray-900">{fmt(r.dia)}</td>
                     <td className="py-2 text-center">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${r.tier === 'T1' ? 'bg-red-50 text-red-700' : r.tier === 'T2' ? 'bg-amber-50 text-amber-700' : 'text-slate-400'}`}>{r.tier}</span>
                     </td>

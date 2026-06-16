@@ -419,11 +419,11 @@ export default function LiversPage() {
     }
   }, [liverSeries, flowArr])
 
-  // 流出予測（退会率ベース）。退会率は直近5か月（基準月−4〜基準月）から算出。
+  // 流出予測（退会率ベース）。退会率は直近4か月（基準月−3〜基準月）から算出。
   const outflowForecast = useMemo(() => {
     if (!liverSeries || !liverForecast || flowArr.length === 0) return []
     const base = liverSeries.base
-    const start = shiftMonth(base, -4)
+    const start = shiftMonth(base, -3)
     const recent = flowArr.filter(x => x.month >= start && x.month <= base)
     const rosterForecast = liverForecast.activeForecast.map((a, i) => ({
       month: a.month,
@@ -525,7 +525,7 @@ export default function LiversPage() {
                       <b className="text-gray-800">流入・流出と予測</b>
                       <p className="mt-1 leading-relaxed">流入＝今月新しく名簿入りした人、流出＝今月名簿から外れた人。<b>所属の増減＝流入−流出</b>。</p>
                       <ul className="mt-1.5 list-disc pl-4 space-y-0.5">
-                        <li>流出予測：<b>退会率（流出÷前月所属）の直近の中央値</b> ×（予測の前月所属）</li>
+                        <li>流出予測：<b>退会率（流出÷前月所属）の直近4か月の中央値</b> ×（予測の前月所属）</li>
                         <li>中央値のため、4月のような一時的な大量流出（異常値）に引っ張られない</li>
                         <li>デビューは参考の折れ線（実際の名簿増＝流入とは別）</li>
                       </ul>
